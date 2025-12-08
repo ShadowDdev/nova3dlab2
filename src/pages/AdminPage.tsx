@@ -21,6 +21,7 @@ import {
   ArrowDownRight,
   Download,
   RefreshCw,
+  Loader2,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -42,7 +43,9 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { Progress } from '@/components/ui/progress'
+import { Skeleton } from '@/components/ui/skeleton'
 import { formatPrice, formatDate } from '@/lib/utils'
+import { useAdminStats, useAdminOrders, useAdminProducts, useAdminMaterialStats } from '@/hooks'
 import type { Order, Product } from '@/types'
 
 // Mock data
@@ -217,7 +220,8 @@ const salesData = [
   { month: 'Jun', revenue: 24800 },
 ]
 
-const topMaterials = [
+// Fallback material stats
+const defaultMaterialStats = [
   { name: 'PLA', orders: 450, percentage: 38 },
   { name: 'PETG', orders: 320, percentage: 27 },
   { name: 'Resin', orders: 210, percentage: 18 },
@@ -248,33 +252,63 @@ export function AdminPage() {
   const [orderSearch, setOrderSearch] = useState('')
   const [orderFilter, setOrderFilter] = useState('all')
 
-  const filteredOrders = recentOrders.filter((order) => {
-    if (orderFilter !== 'all' && order.status !== orderFilter) return false
-    if (
-      orderSearch &&
-      !order.order_number.toLowerCase().includes(orderSearch.toLowerCase()) &&
-      !order.customer.toLowerCase().includes(orderSearch.toLowerCase())
-    )
-      return false
-    return true
+  // Fetch data from Supabase
+  const { data: adminStats, isLoading: statsLoading } = useAdminStats()
+  const { data: supabaseOrders, isLoading: ordersLoading } = useAdminOrders({ 
+    status: orderFilter === 'all' ? undefined : orderFilter, 
+    search: orderSearch,
+    limit: 10 
   })
+  const { data: supabaseProducts, isLoading: productsLoading } = useAdminProducts({ 
+    search: productSearch,
+    limit: 10 
+  })
+  const { data: materialStats } = useAdminMaterialStats()
 
-  const filteredProducts = mockProducts.filter((product) => {
-    if (
-      productSearch &&
-      !product.name?.toLowerCase().includes(productSearch.toLowerCase())
-    )
-      return false
-    return true
-  })
+  // Use Supabase data or fallback to mock data
+  const orders = supabaseOrders?.length ? supabaseOrders : recentOrders
+  const products = supabaseProducts?.length ? supabaseProducts : mockProducts
+  const topMaterials = materialStats?.length ? materialStats : defaultMaterialStats
+
+  // Build stats from Supabase data
+  const stats = [
+    {
+      title: 'Total Revenue',
+      value: adminStats ? formatPrice(adminStats.totalRevenue) : '$48,234.89',
+      change: '+12.5%',
+      trend: 'up' as const,
+      icon: DollarSign,
+    },
+    {
+      title: 'Total Orders',
+      value: adminStats ? adminStats.totalOrders.toLocaleString() : '1,234',
+      change: '+8.2%',
+      trend: 'up' as const,
+      icon: ShoppingCart,
+    },
+    {
+      title: 'Total Products',
+      value: adminStats ? adminStats.totalProducts.toLocaleString() : '156',
+      change: '+4',
+      trend: 'up' as const,
+      icon: Package,
+    },
+    {
+      title: 'Total Customers',
+      value: adminStats ? adminStats.totalCustomers.toLocaleString() : '2,847',
+      change: '+23.1%',
+      trend: 'up' as const,
+      icon: Users,
+    },
+  ]
 
   const maxRevenue = Math.max(...salesData.map((d) => d.revenue))
 
   return (
     <>
       <Helmet>
-        <title>Admin Dashboard | PrintForge</title>
-        <meta name="description" content="Manage your PrintForge store." />
+        <title>Admin Dashboard | Nova3D Lab</title>
+        <meta name="description" content="Manage your Nova3D Lab store." />
       </Helmet>
 
       <div className="min-h-screen pt-20">
@@ -494,6 +528,12 @@ export function AdminPage() {
                 </CardHeader>
                 <CardContent>
                   <div className="overflow-x-auto">
+                    {ordersLoading ? (
+                      <div className="py-8 text-center">
+                        <Loader2 className="w-8 h-8 animate-spin mx-auto text-muted-foreground" />
+                        <p className="text-sm text-muted-foreground mt-2">Loading orders...</p>
+                      </div>
+                    ) : (
                     <table className="w-full">
                       <thead>
                         <tr className="border-b">
@@ -507,7 +547,7 @@ export function AdminPage() {
                         </tr>
                       </thead>
                       <tbody>
-                        {filteredOrders.map((order) => (
+                        {orders.map((order: any) => (
                           <tr key={order.id} className="border-b last:border-0">
                             <td className="py-3 px-2">
                               <span className="font-medium">{order.order_number}</span>
@@ -556,6 +596,7 @@ export function AdminPage() {
                         ))}
                       </tbody>
                     </table>
+                    )}
                   </div>
                 </CardContent>
               </Card>
@@ -589,6 +630,12 @@ export function AdminPage() {
                 </CardHeader>
                 <CardContent>
                   <div className="overflow-x-auto">
+                    {productsLoading ? (
+                      <div className="py-8 text-center">
+                        <Loader2 className="w-8 h-8 animate-spin mx-auto text-muted-foreground" />
+                        <p className="text-sm text-muted-foreground mt-2">Loading products...</p>
+                      </div>
+                    ) : (
                     <table className="w-full">
                       <thead>
                         <tr className="border-b">
@@ -600,7 +647,7 @@ export function AdminPage() {
                         </tr>
                       </thead>
                       <tbody>
-                        {filteredProducts.map((product) => (
+                        {products.map((product: any) => (
                           <tr key={product.id} className="border-b last:border-0">
                             <td className="py-3 px-2">
                               <div className="flex items-center gap-3">
@@ -613,9 +660,9 @@ export function AdminPage() {
                             </td>
                             <td className="py-3 px-2">
                               <Badge
-                                variant={product.in_stock ? 'default' : 'destructive'}
+                                variant={product.in_stock !== false ? 'default' : 'destructive'}
                               >
-                                {product.in_stock ? 'In Stock' : 'Out of Stock'}
+                                {product.in_stock !== false ? 'In Stock' : 'Out of Stock'}
                               </Badge>
                             </td>
                             <td className="py-3 px-2 text-muted-foreground">
@@ -648,6 +695,7 @@ export function AdminPage() {
                         ))}
                       </tbody>
                     </table>
+                    )}
                   </div>
                 </CardContent>
               </Card>

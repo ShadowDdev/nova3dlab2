@@ -25,7 +25,7 @@ const defaultMaterial: Material = {
   description: 'Eco-friendly, beginner-friendly',
   price_per_cm3: 0.05,
   colors: [{ name: 'Black', hex: '#1a1a1a', premium: false, price_modifier: 0 }],
-  properties: { strength: 6, flexibility: 3, heat_resistance: 4, detail: 8 },
+  properties: { strength: 6, flexibility: 3, heat_resistance: 4, detail: 8, food_safe: true, uv_resistant: false },
   min_layer_height: 0.1,
   max_layer_height: 0.3,
   image_url: '',
@@ -218,7 +218,7 @@ export function WishlistPage() {
                         {/* Image */}
                         <div className="relative aspect-square overflow-hidden bg-muted">
                           <img
-                            src={item.images?.[0] || '/placeholder.jpg'}
+                            src={typeof item.images?.[0] === 'string' ? item.images[0] : item.images?.[0]?.url || '/placeholder.jpg'}
                             alt={item.name}
                             className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-110"
                           />
@@ -235,15 +235,15 @@ export function WishlistPage() {
                           </div>
                           {/* Badges */}
                           <div className="absolute top-2 left-2 flex flex-col gap-1">
-                            {!item.in_stock && (
+                            {!item.is_active && (
                               <Badge variant="destructive">Out of Stock</Badge>
                             )}
                             {item.compare_at_price &&
-                              item.compare_at_price > item.base_price && (
+                              item.compare_at_price > item.price && (
                                 <Badge className="bg-red-500">
                                   {Math.round(
                                     (1 -
-                                      item.base_price / item.compare_at_price) *
+                                      item.price / item.compare_at_price) *
                                       100
                                   )}
                                   % OFF
@@ -262,19 +262,19 @@ export function WishlistPage() {
                             </h3>
                           </Link>
 
-                          {item.category && (
+                          {item.category && typeof item.category === 'string' && (
                             <p className="text-sm text-muted-foreground mt-1">
-                              {item.category.name}
+                              {item.category}
                             </p>
                           )}
 
                           {/* Price */}
                           <div className="flex items-center gap-2 mt-2">
                             <span className="text-lg font-bold text-primary">
-                              {formatPrice(item.base_price)}
+                              {formatPrice(item.price)}
                             </span>
                             {item.compare_at_price &&
-                              item.compare_at_price > item.base_price && (
+                              item.compare_at_price > item.price && (
                                 <span className="text-sm text-muted-foreground line-through">
                                   {formatPrice(item.compare_at_price)}
                                 </span>
@@ -282,14 +282,14 @@ export function WishlistPage() {
                           </div>
 
                           {/* Rating */}
-                          {item.average_rating && (
+                          {item.rating_average > 0 && (
                             <div className="flex items-center gap-1 mt-2">
                               <div className="flex">
                                 {[...Array(5)].map((_, i) => (
                                   <svg
                                     key={i}
                                     className={`w-4 h-4 ${
-                                      i < Math.floor(item.average_rating!)
+                                      i < Math.floor(item.rating_average)
                                         ? 'text-yellow-400 fill-current'
                                         : 'text-muted-foreground'
                                     }`}
@@ -300,7 +300,7 @@ export function WishlistPage() {
                                 ))}
                               </div>
                               <span className="text-sm text-muted-foreground">
-                                ({item.review_count})
+                                ({item.rating_count})
                               </span>
                             </div>
                           )}
@@ -311,7 +311,7 @@ export function WishlistPage() {
                               variant="gradient"
                               className="flex-1"
                               onClick={() => handleAddToCart(item)}
-                              disabled={!item.in_stock}
+                              disabled={!item.is_active}
                             >
                               <ShoppingCart className="w-4 h-4 mr-2" />
                               Add to Cart

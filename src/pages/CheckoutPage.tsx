@@ -76,7 +76,8 @@ export function CheckoutPage() {
   const [shippingOption, setShippingOption] = useState('standard')
   const [isProcessing, setIsProcessing] = useState(false)
   const navigate = useNavigate()
-  const { items, subtotal, clearCart } = useCartStore()
+  const { items, getSubtotal, getItemPrice, clearCart } = useCartStore()
+  const subtotal = getSubtotal()
   const { user, profile } = useAuthStore()
 
   const [shippingData, setShippingData] = useState<ShippingForm | null>(null)
@@ -638,7 +639,7 @@ export function CheckoutPage() {
                                 <div className="w-16 h-16 rounded-lg bg-muted overflow-hidden">
                                   {item.product?.images?.[0] ? (
                                     <img
-                                      src={item.product.images[0]}
+                                      src={typeof item.product.images[0] === 'string' ? item.product.images[0] : item.product.images[0]?.url}
                                       alt={item.product?.name || 'Product'}
                                       className="w-full h-full object-cover"
                                     />
@@ -659,7 +660,7 @@ export function CheckoutPage() {
                                   </p>
                                 </div>
                                 <p className="font-semibold">
-                                  {formatPrice(item.unit_price * item.quantity)}
+                                  {formatPrice(getItemPrice(item))}
                                 </p>
                               </div>
                             ))}
@@ -723,7 +724,7 @@ export function CheckoutPage() {
                             </p>
                           </div>
                           <span className="font-medium">
-                            {formatPrice(item.unit_price * item.quantity)}
+                            {formatPrice(getItemPrice(item))}
                           </span>
                         </div>
                       ))}

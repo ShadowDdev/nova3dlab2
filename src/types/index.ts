@@ -51,12 +51,13 @@ export interface Product {
   description: string
   short_description: string
   price: number
+  base_price?: number
   compare_at_price: number | null
   material_id: string
   material?: Material
   category: ProductCategory
   tags: string[]
-  images: ProductImage[]
+  images: (ProductImage | string)[]
   model_url: string | null
   specs: {
     dimensions: { x: number; y: number; z: number }
@@ -66,10 +67,13 @@ export interface Product {
     print_time_hours: number
   }
   stock_quantity: number
+  in_stock?: boolean
   is_featured: boolean
   is_active: boolean
   rating_average: number
+  average_rating?: number
   rating_count: number
+  review_count?: number
   created_at: string
   updated_at: string
 }
@@ -93,20 +97,23 @@ export type ProductCategory =
 export interface Order {
   id: string
   user_id: string | null
+  order_number: string
   status: OrderStatus
+  payment_status: 'pending' | 'paid' | 'failed' | 'refunded'
   total: number
   subtotal: number
   tax: number
   shipping_cost: number
   discount: number
-  coupon_code: string | null
+  coupon_code?: string | null
   shipping_address: Address
-  billing_address: Address
-  shipping_method: 'standard' | 'express'
-  tracking_number: string | null
-  notes: string | null
-  stripe_payment_intent_id: string | null
-  items: OrderItem[]
+  billing_address?: Address
+  shipping_method?: 'standard' | 'express'
+  tracking_number?: string | null
+  tracking_url?: string | null
+  notes?: string | null
+  stripe_payment_intent_id?: string | null
+  items?: OrderItem[]
   created_at: string
   updated_at: string
 }
@@ -153,6 +160,7 @@ export interface CartItem {
   infill_percentage: number
   layer_height: number
   quantity: number
+  unit_price?: number
   created_at: string
 }
 
@@ -167,17 +175,18 @@ export interface WishlistItem {
 export interface Address {
   id?: string
   user_id?: string
-  label: string
-  first_name: string
-  last_name: string
+  label?: string
+  first_name?: string
+  last_name?: string
   company?: string
-  address_line1: string
+  street?: string
+  address_line1?: string
   address_line2?: string
   city: string
   state: string
   postal_code: string
   country: string
-  phone: string
+  phone?: string
   is_default?: boolean
 }
 

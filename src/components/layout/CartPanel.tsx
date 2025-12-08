@@ -6,7 +6,7 @@ import { ScrollArea } from '@/components/ui/scroll-area'
 import { Separator } from '@/components/ui/separator'
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet'
 import { useCartStore } from '@/stores'
-import { formatPrice } from '@/lib/utils'
+import { formatPrice, getImageUrl } from '@/lib/utils'
 
 export function CartPanel() {
   const { items, isOpen, closeCart, updateQuantity, removeItem, getSubtotal, getItemPrice } = useCartStore()
@@ -47,7 +47,7 @@ export function CartPanel() {
                 {items.map((item) => {
                   const price = getItemPrice(item)
                   const name = item.product?.name || item.uploaded_model?.file_name || 'Custom Print'
-                  const image = item.product?.images[0]?.url || item.uploaded_model?.thumbnail_url || '/placeholder.png'
+                  const image = getImageUrl(item.product?.images[0]) || item.uploaded_model?.thumbnail_url || '/placeholder.png'
 
                   return (
                     <motion.div

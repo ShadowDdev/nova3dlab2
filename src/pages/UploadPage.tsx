@@ -44,13 +44,15 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from '@/components/ui/tooltip'
+import { Skeleton } from '@/components/ui/skeleton'
 import { useCartStore } from '@/stores'
+import { useMaterials } from '@/hooks'
 import { formatPrice, formatFileSize, isValidModelFile, calculatePrice, calculateLeadTime } from '@/lib/utils'
 import type { UploadedModel, Material, PrintabilityIssue } from '@/types'
 import { toast } from 'sonner'
 
-// Mock materials
-const materials: Material[] = [
+// Default materials fallback if Supabase is unavailable
+const defaultMaterials: Material[] = [
   {
     id: '1',
     name: 'PLA',
@@ -176,6 +178,14 @@ export function UploadPage() {
   const [configs, setConfigs] = useState<Record<string, FileConfig>>({})
   const [expandedFile, setExpandedFile] = useState<string | null>(null)
   const { addItem, openCart } = useCartStore()
+  
+  // Fetch materials from Supabase
+  const { data: supabaseMaterials, isLoading: materialsLoading } = useMaterials()
+  
+  // Use Supabase materials if available, otherwise fall back to defaults
+  const materials = (supabaseMaterials && supabaseMaterials.length > 0) 
+    ? supabaseMaterials 
+    : defaultMaterials
 
   const onDrop = useCallback(async (acceptedFiles: File[]) => {
     for (const file of acceptedFiles) {
@@ -211,11 +221,13 @@ export function UploadPage() {
         setFiles((prev) =>
           prev.map((f) => (f.id === id ? { ...f, status: 'ready', model } : f))
         )
+        // Use first material from list or default to '1'
+        const defaultMaterial = materials[0]
         setConfigs((prev) => ({
           ...prev,
           [id]: {
-            material_id: '1',
-            color: 'Black',
+            material_id: defaultMaterial?.id || '1',
+            color: defaultMaterial?.colors?.[0]?.name || 'Black',
             infill: 20,
             layer_height: 0.2,
             quantity: 1,

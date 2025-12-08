@@ -16,6 +16,8 @@ interface CartItemInput {
 interface CartState {
   items: CartItem[]
   isOpen: boolean
+  subtotal: number
+  totalItems: number
   addItem: (item: CartItemInput) => void
   removeItem: (id: string) => void
   updateQuantity: (id: string, quantity: number) => void
@@ -34,6 +36,14 @@ export const useCartStore = create<CartState>()(
     (set, get) => ({
       items: [],
       isOpen: false,
+      
+      get subtotal() {
+        return get().getSubtotal()
+      },
+      
+      get totalItems() {
+        return get().getItemCount()
+      },
 
       addItem: (input) => {
         const id = crypto.randomUUID()

@@ -273,7 +273,7 @@ export function Header() {
               </DropdownMenu>
             ) : (
               <Button variant="gradient" size="sm" asChild className="hidden sm:flex">
-                <Link to="/auth/login">
+                <Link to="/login">
                   <Sparkles className="w-4 h-4 mr-2" />
                   Sign In
                 </Link>
@@ -348,7 +348,7 @@ export function Header() {
                   <div className="pt-4 border-t">
                     {!isAuthenticated && (
                       <Button variant="gradient" className="w-full" asChild>
-                        <Link to="/auth/login">Sign In</Link>
+                        <Link to="/login">Sign In</Link>
                       </Button>
                     )}
                   </div>

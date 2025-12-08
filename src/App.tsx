@@ -15,6 +15,10 @@ import {
   AccountPage,
   CheckoutPage,
   AdminPage,
+  AboutPage,
+  NotFoundPage,
+  ContactPage,
+  HelpPage,
 } from '@/pages'
 import { useAuthStore, useThemeStore } from '@/stores'
 import { useEffect } from 'react'
@@ -99,6 +103,9 @@ function App() {
               <Route path="/upload" element={<UploadPage />} />
               <Route path="/cart" element={<CartPage />} />
               <Route path="/wishlist" element={<WishlistPage />} />
+              <Route path="/about" element={<AboutPage />} />
+              <Route path="/contact" element={<ContactPage />} />
+              <Route path="/help" element={<HelpPage />} />
               
               {/* Auth routes */}
               <Route path="/login" element={<LoginPage />} />
@@ -141,8 +148,8 @@ function App() {
               />
             </Route>
             
-            {/* Catch all - redirect to home */}
-            <Route path="*" element={<Navigate to="/" replace />} />
+            {/* Catch all - 404 page */}
+            <Route path="*" element={<NotFoundPage />} />
           </Routes>
           
           {/* Toast notifications */}

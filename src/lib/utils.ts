@@ -1,8 +1,23 @@
 import { type ClassValue, clsx } from "clsx"
 import { twMerge } from "tailwind-merge"
+import type { ProductImage } from "@/types"
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
+}
+
+// Helper to get image URL from ProductImage or string
+export function getImageUrl(image: ProductImage | string | undefined, fallback: string = '/placeholder.jpg'): string {
+  if (!image) return fallback
+  if (typeof image === 'string') return image
+  return image.url || fallback
+}
+
+// Helper to get image alt text
+export function getImageAlt(image: ProductImage | string | undefined, fallback: string = 'Product image'): string {
+  if (!image) return fallback
+  if (typeof image === 'string') return fallback
+  return image.alt || fallback
 }
 
 export function formatPrice(price: number, currency: string = 'USD'): string {

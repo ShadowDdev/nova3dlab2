@@ -24,8 +24,10 @@ import { useState } from 'react'
 import { toast } from 'sonner'
 
 export function CartPage() {
-  const { items, removeItem, updateQuantity, clearCart, subtotal, totalItems } =
+  const { items, removeItem, updateQuantity, clearCart, getSubtotal, getItemCount, getItemPrice } =
     useCartStore()
+  const subtotal = getSubtotal()
+  const totalItems = getItemCount()
   const [couponCode, setCouponCode] = useState('')
   const [appliedCoupon, setAppliedCoupon] = useState<{
     code: string
@@ -136,7 +138,7 @@ export function CartPage() {
                             <div className="w-20 h-20 md:w-28 md:h-28 flex-shrink-0 rounded-lg overflow-hidden bg-muted">
                               {item.product?.images?.[0] ? (
                                 <img
-                                  src={item.product.images[0]}
+                                  src={typeof item.product.images[0] === 'string' ? item.product.images[0] : item.product.images[0]?.url}
                                   alt={item.product?.name || 'Custom Print'}
                                   className="w-full h-full object-cover"
                                 />
@@ -217,11 +219,11 @@ export function CartPage() {
                                 {/* Price */}
                                 <div className="text-right">
                                   <p className="text-lg font-semibold">
-                                    {formatPrice(item.unit_price * item.quantity)}
+                                    {formatPrice(getItemPrice(item))}
                                   </p>
                                   {item.quantity > 1 && (
                                     <p className="text-sm text-muted-foreground">
-                                      {formatPrice(item.unit_price)} each
+                                      {formatPrice(getItemPrice(item) / item.quantity)} each
                                     </p>
                                   )}
                                 </div>

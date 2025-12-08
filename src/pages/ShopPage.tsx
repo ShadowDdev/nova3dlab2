@@ -1,9 +1,8 @@
-import { useState, useEffect } from 'react'
-import { useParams, useSearchParams, Link } from 'react-router-dom'
+import { useState, useEffect, useCallback } from 'react'
+import { useParams, Link, useSearchParams } from 'react-router-dom'
 import { Helmet } from 'react-helmet-async'
-import { motion, AnimatePresence } from 'framer-motion'
+import { motion } from 'framer-motion'
 import {
-  Filter,
   Grid3X3,
   List,
   SlidersHorizontal,
@@ -12,15 +11,16 @@ import {
   ShoppingCart,
   Heart,
   ChevronDown,
+  Filter,
+  Search,
   Loader2,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
-import { Checkbox } from '@/components/ui/checkbox'
-import { Label } from '@/components/ui/label'
+import { Card, CardContent } from '@/components/ui/card'
+import { Input } from '@/components/ui/input'
 import { Slider } from '@/components/ui/slider'
-import { Separator } from '@/components/ui/separator'
+import { Checkbox } from '@/components/ui/checkbox'
 import {
   Select,
   SelectContent,
@@ -43,392 +43,357 @@ import {
 } from '@/components/ui/accordion'
 import { Skeleton } from '@/components/ui/skeleton'
 import { useWishlistStore, useCartStore } from '@/stores'
-import { formatPrice, capitalizeFirst } from '@/lib/utils'
+import { useProducts, useMaterials, useCategories } from '@/hooks/useSupabase'
+import { formatPrice, capitalizeFirst, getImageUrl, getImageAlt } from '@/lib/utils'
 import type { Product, ProductCategory } from '@/types'
+import { toast } from 'sonner'
 
-// Mock data
-const mockProducts: Product[] = Array.from({ length: 24 }, (_, i) => ({
-  id: String(i + 1),
-  name: `Product ${i + 1}`,
-  slug: `product-${i + 1}`,
-  description: 'A high-quality 3D printed product',
-  short_description: 'Premium 3D print',
-  price: Math.floor(Math.random() * 150) + 20,
-  compare_at_price: Math.random() > 0.7 ? Math.floor(Math.random() * 50) + 100 : null,
-  material_id: String(Math.floor(Math.random() * 7) + 1),
-  category: ['prototypes', 'art', 'functional', 'miniatures', 'jewelry', 'home', 'industrial'][
-    Math.floor(Math.random() * 7)
-  ] as ProductCategory,
-  tags: ['popular', 'new', 'sale'].slice(0, Math.floor(Math.random() * 3) + 1),
-  images: [
-    {
-      url: `https://picsum.photos/seed/${i + 1}/400/400`,
-      alt: `Product ${i + 1}`,
-      is_primary: true,
-    },
-  ],
-  model_url: null,
-  specs: {
-    dimensions: { x: 10, y: 10, z: 10 },
-    weight_grams: 100,
-    layer_height: 0.2,
-    infill_percentage: 20,
-    print_time_hours: 4,
-  },
-  stock_quantity: Math.floor(Math.random() * 100),
-  is_featured: Math.random() > 0.8,
-  is_active: true,
-  rating_average: Math.round((Math.random() * 2 + 3) * 10) / 10,
-  rating_count: Math.floor(Math.random() * 200),
-  created_at: new Date().toISOString(),
-  updated_at: new Date().toISOString(),
-}))
-
-const materials = [
-  { id: '1', name: 'PLA', count: 45 },
-  { id: '2', name: 'PETG', count: 32 },
-  { id: '3', name: 'Resin', count: 28 },
-  { id: '4', name: 'TPU', count: 15 },
-  { id: '5', name: 'Nylon', count: 12 },
-  { id: '6', name: 'Carbon Fiber', count: 8 },
-  { id: '7', name: 'Metal', count: 5 },
+const categories: { value: ProductCategory; label: string }[] = [
+  { value: 'prototypes', label: 'Prototypes' },
+  { value: 'art', label: 'Art & Decor' },
+  { value: 'functional', label: 'Functional Parts' },
+  { value: 'miniatures', label: 'Miniatures' },
+  { value: 'jewelry', label: 'Jewelry' },
+  { value: 'home', label: 'Home & Living' },
+  { value: 'industrial', label: 'Industrial' },
 ]
 
-const colors = [
-  { name: 'Black', hex: '#000000' },
-  { name: 'White', hex: '#FFFFFF' },
-  { name: 'Red', hex: '#EF4444' },
-  { name: 'Blue', hex: '#3B82F6' },
-  { name: 'Green', hex: '#22C55E' },
-  { name: 'Yellow', hex: '#EAB308' },
-  { name: 'Orange', hex: '#F97316' },
-  { name: 'Purple', hex: '#A855F7' },
+const sortOptions = [
+  { value: 'newest', label: 'Newest' },
+  { value: 'price_asc', label: 'Price: Low to High' },
+  { value: 'price_desc', label: 'Price: High to Low' },
+  { value: 'rating', label: 'Top Rated' },
+  { value: 'name', label: 'Name A-Z' },
 ]
 
 function ProductCard({ product }: { product: Product }) {
   const { toggleItem, isInWishlist } = useWishlistStore()
+  const { addItem, openCart } = useCartStore()
+  const { data: materials } = useMaterials()
   const inWishlist = isInWishlist(product.id)
 
   const discount = product.compare_at_price
     ? Math.round(((product.compare_at_price - product.price) / product.compare_at_price) * 100)
     : null
 
+  const handleAddToCart = (e: React.MouseEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+
+    const material = materials?.find(m => m.id === product.material_id) || product.material
+    if (!material) {
+      toast.error('Product not available')
+      return
+    }
+
+    addItem({
+      product,
+      material,
+      color: material.colors[0]?.name || 'Default',
+      infill_percentage: product.specs.infill_percentage,
+      layer_height: product.specs.layer_height,
+      quantity: 1,
+    })
+    toast.success('Added to cart!', {
+      action: {
+        label: 'View Cart',
+        onClick: openCart,
+      },
+    })
+  }
+
   return (
-    <Card hover className="group relative overflow-hidden">
-      <div className="relative aspect-square overflow-hidden">
-        <img
-          src={product.images[0]?.url}
-          alt={product.images[0]?.alt}
-          className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
-        />
+    <Link to={`/product/${product.slug}`}>
+      <Card className="group relative overflow-hidden hover:shadow-lg transition-shadow">
+        <div className="relative aspect-square overflow-hidden">
+          <img
+            src={getImageUrl(product.images[0])}
+            alt={getImageAlt(product.images[0], product.name)}
+            className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
+          />
 
-        {/* Badges */}
-        <div className="absolute top-3 left-3 flex flex-col gap-2">
-          {discount && <Badge variant="destructive">-{discount}%</Badge>}
-          {product.is_featured && <Badge variant="glow">Featured</Badge>}
-          {product.stock_quantity < 10 && product.stock_quantity > 0 && (
-            <Badge variant="warning">Low Stock</Badge>
-          )}
-        </div>
-
-        {/* Wishlist button */}
-        <Button
-          variant="ghost"
-          size="icon"
-          className={`absolute top-3 right-3 bg-background/80 backdrop-blur-sm ${
-            inWishlist ? 'text-red-500' : ''
-          }`}
-          onClick={() => toggleItem(product)}
-        >
-          <Heart className={`w-5 h-5 ${inWishlist ? 'fill-current' : ''}`} />
-        </Button>
-
-        {/* Quick add button */}
-        <div className="absolute bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-black/80 to-transparent opacity-0 group-hover:opacity-100 transition-opacity">
-          <Button variant="gradient" className="w-full" size="sm">
-            <ShoppingCart className="w-4 h-4 mr-2" />
-            Add to Cart
-          </Button>
-        </div>
-      </div>
-
-      <CardContent className="p-4">
-        <Link to={`/p/${product.slug}`}>
-          <h3 className="font-semibold mb-1 hover:text-primary transition-colors line-clamp-1">
-            {product.name}
-          </h3>
-        </Link>
-        <p className="text-sm text-muted-foreground mb-2 line-clamp-1">
-          {product.short_description}
-        </p>
-
-        <div className="flex items-center gap-2 mb-2">
-          <div className="flex items-center gap-1">
-            <Star className="w-4 h-4 fill-yellow-400 text-yellow-400" />
-            <span className="text-sm font-medium">{product.rating_average}</span>
+          {/* Badges */}
+          <div className="absolute top-3 left-3 flex flex-col gap-2">
+            {discount && <Badge variant="destructive">-{discount}%</Badge>}
+            {product.is_featured && <Badge variant="glow">Featured</Badge>}
+            {product.stock_quantity > 0 && product.stock_quantity < 10 && (
+              <Badge variant="warning">Low Stock</Badge>
+            )}
           </div>
-          <span className="text-sm text-muted-foreground">
-            ({product.rating_count} reviews)
-          </span>
+
+          {/* Wishlist button */}
+          <Button
+            variant="secondary"
+            size="icon"
+            className={`absolute top-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity ${
+              inWishlist ? 'text-red-500' : ''
+            }`}
+            onClick={(e) => {
+              e.preventDefault()
+              e.stopPropagation()
+              toggleItem(product)
+            }}
+          >
+            <Heart className={`w-4 h-4 ${inWishlist ? 'fill-current' : ''}`} />
+          </Button>
+
+          {/* Quick add */}
+          <div className="absolute bottom-0 left-0 right-0 p-3 translate-y-full group-hover:translate-y-0 transition-transform">
+            <Button
+              variant="gradient"
+              className="w-full"
+              onClick={handleAddToCart}
+            >
+              <ShoppingCart className="w-4 h-4 mr-2" />
+              Add to Cart
+            </Button>
+          </div>
         </div>
 
-        <div className="flex items-center gap-2">
-          <span className="font-bold text-lg text-primary">
-            {formatPrice(product.price)}
-          </span>
-          {product.compare_at_price && (
-            <span className="text-sm text-muted-foreground line-through">
-              {formatPrice(product.compare_at_price)}
+        <CardContent className="p-4">
+          <h3 className="font-medium mb-1 truncate">{product.name}</h3>
+          <div className="flex items-center gap-2 mb-2">
+            <div className="flex items-center gap-1">
+              <Star className="w-4 h-4 fill-yellow-400 text-yellow-400" />
+              <span className="text-sm">{product.rating_average.toFixed(1)}</span>
+            </div>
+            <span className="text-sm text-muted-foreground">
+              ({product.rating_count})
             </span>
-          )}
-        </div>
-      </CardContent>
-    </Card>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="font-bold text-primary">{formatPrice(product.price)}</span>
+            {product.compare_at_price && (
+              <span className="text-sm text-muted-foreground line-through">
+                {formatPrice(product.compare_at_price)}
+              </span>
+            )}
+          </div>
+        </CardContent>
+      </Card>
+    </Link>
   )
 }
 
 function ProductSkeleton() {
   return (
-    <Card>
+    <Card className="overflow-hidden">
       <Skeleton className="aspect-square" />
       <CardContent className="p-4 space-y-2">
-        <Skeleton className="h-5 w-3/4" />
+        <Skeleton className="h-4 w-3/4" />
         <Skeleton className="h-4 w-1/2" />
-        <Skeleton className="h-4 w-1/3" />
-        <Skeleton className="h-6 w-1/4" />
+        <Skeleton className="h-6 w-1/3" />
       </CardContent>
     </Card>
   )
 }
 
-function FilterSidebar({
+function FilterPanel({
   selectedMaterials,
   setSelectedMaterials,
-  selectedColors,
-  setSelectedColors,
+  selectedCategory,
+  setSelectedCategory,
   priceRange,
   setPriceRange,
   minRating,
   setMinRating,
+  onClear,
 }: {
   selectedMaterials: string[]
   setSelectedMaterials: (materials: string[]) => void
-  selectedColors: string[]
-  setSelectedColors: (colors: string[]) => void
-  priceRange: [number, number]
-  setPriceRange: (range: [number, number]) => void
+  selectedCategory: string
+  setSelectedCategory: (category: string) => void
+  priceRange: number[]
+  setPriceRange: (range: number[]) => void
   minRating: number
   setMinRating: (rating: number) => void
+  onClear: () => void
 }) {
+  const { data: materials = [] } = useMaterials()
+
   return (
     <div className="space-y-6">
-      {/* Materials */}
-      <Accordion type="single" collapsible defaultValue="materials">
-        <AccordionItem value="materials" className="border-none">
-          <AccordionTrigger className="hover:no-underline py-2">
-            <span className="font-semibold">Material</span>
-          </AccordionTrigger>
+      <Accordion type="multiple" defaultValue={['category', 'material', 'price', 'rating']}>
+        <AccordionItem value="category">
+          <AccordionTrigger>Category</AccordionTrigger>
           <AccordionContent>
             <div className="space-y-2">
-              {materials.map((material) => (
-                <div key={material.id} className="flex items-center space-x-2">
+              <button
+                className={`w-full text-left px-3 py-2 rounded-lg transition-colors ${
+                  !selectedCategory ? 'bg-primary/10 text-primary' : 'hover:bg-muted'
+                }`}
+                onClick={() => setSelectedCategory('')}
+              >
+                All Categories
+              </button>
+              {categories.map((cat) => (
+                <button
+                  key={cat.value}
+                  className={`w-full text-left px-3 py-2 rounded-lg transition-colors ${
+                    selectedCategory === cat.value ? 'bg-primary/10 text-primary' : 'hover:bg-muted'
+                  }`}
+                  onClick={() => setSelectedCategory(cat.value)}
+                >
+                  {cat.label}
+                </button>
+              ))}
+            </div>
+          </AccordionContent>
+        </AccordionItem>
+
+        <AccordionItem value="material">
+          <AccordionTrigger>Material</AccordionTrigger>
+          <AccordionContent>
+            <div className="space-y-2">
+              {materials.map((mat) => (
+                <label key={mat.id} className="flex items-center gap-2 cursor-pointer">
                   <Checkbox
-                    id={`material-${material.id}`}
-                    checked={selectedMaterials.includes(material.id)}
+                    checked={selectedMaterials.includes(mat.id)}
                     onCheckedChange={(checked) => {
                       if (checked) {
-                        setSelectedMaterials([...selectedMaterials, material.id])
+                        setSelectedMaterials([...selectedMaterials, mat.id])
                       } else {
-                        setSelectedMaterials(
-                          selectedMaterials.filter((m) => m !== material.id)
-                        )
+                        setSelectedMaterials(selectedMaterials.filter((m) => m !== mat.id))
                       }
                     }}
                   />
-                  <Label
-                    htmlFor={`material-${material.id}`}
-                    className="flex-1 cursor-pointer"
-                  >
-                    {material.name}
-                  </Label>
-                  <span className="text-sm text-muted-foreground">
-                    ({material.count})
-                  </span>
-                </div>
+                  <span>{mat.name}</span>
+                </label>
               ))}
             </div>
           </AccordionContent>
         </AccordionItem>
-      </Accordion>
 
-      <Separator />
-
-      {/* Colors */}
-      <Accordion type="single" collapsible defaultValue="colors">
-        <AccordionItem value="colors" className="border-none">
-          <AccordionTrigger className="hover:no-underline py-2">
-            <span className="font-semibold">Color</span>
-          </AccordionTrigger>
-          <AccordionContent>
-            <div className="flex flex-wrap gap-2">
-              {colors.map((color) => (
-                <button
-                  key={color.name}
-                  className={`w-8 h-8 rounded-full border-2 transition-all ${
-                    selectedColors.includes(color.name)
-                      ? 'border-primary scale-110'
-                      : 'border-transparent'
-                  }`}
-                  style={{ backgroundColor: color.hex }}
-                  onClick={() => {
-                    if (selectedColors.includes(color.name)) {
-                      setSelectedColors(
-                        selectedColors.filter((c) => c !== color.name)
-                      )
-                    } else {
-                      setSelectedColors([...selectedColors, color.name])
-                    }
-                  }}
-                  title={color.name}
-                />
-              ))}
-            </div>
-          </AccordionContent>
-        </AccordionItem>
-      </Accordion>
-
-      <Separator />
-
-      {/* Price Range */}
-      <Accordion type="single" collapsible defaultValue="price">
-        <AccordionItem value="price" className="border-none">
-          <AccordionTrigger className="hover:no-underline py-2">
-            <span className="font-semibold">Price Range</span>
-          </AccordionTrigger>
+        <AccordionItem value="price">
+          <AccordionTrigger>Price Range</AccordionTrigger>
           <AccordionContent>
             <div className="space-y-4">
               <Slider
                 value={priceRange}
-                onValueChange={(value) => setPriceRange(value as [number, number])}
+                onValueChange={setPriceRange}
+                min={0}
                 max={500}
                 step={10}
               />
-              <div className="flex items-center justify-between text-sm">
-                <span>{formatPrice(priceRange[0])}</span>
-                <span>{formatPrice(priceRange[1])}</span>
+              <div className="flex justify-between text-sm">
+                <span>${priceRange[0]}</span>
+                <span>${priceRange[1]}</span>
               </div>
             </div>
           </AccordionContent>
         </AccordionItem>
-      </Accordion>
 
-      <Separator />
-
-      {/* Rating */}
-      <Accordion type="single" collapsible defaultValue="rating">
-        <AccordionItem value="rating" className="border-none">
-          <AccordionTrigger className="hover:no-underline py-2">
-            <span className="font-semibold">Minimum Rating</span>
-          </AccordionTrigger>
+        <AccordionItem value="rating">
+          <AccordionTrigger>Minimum Rating</AccordionTrigger>
           <AccordionContent>
             <div className="space-y-2">
-              {[4, 3, 2, 1].map((rating) => (
+              {[0, 3, 4, 4.5].map((rating) => (
                 <button
                   key={rating}
-                  className={`flex items-center gap-2 w-full p-2 rounded-lg transition-colors ${
-                    minRating === rating ? 'bg-primary/10' : 'hover:bg-muted'
+                  className={`w-full flex items-center gap-2 px-3 py-2 rounded-lg transition-colors ${
+                    minRating === rating ? 'bg-primary/10 text-primary' : 'hover:bg-muted'
                   }`}
-                  onClick={() => setMinRating(minRating === rating ? 0 : rating)}
+                  onClick={() => setMinRating(rating)}
                 >
-                  <div className="flex">
-                    {Array.from({ length: 5 }).map((_, i) => (
-                      <Star
-                        key={i}
-                        className={`w-4 h-4 ${
-                          i < rating
-                            ? 'fill-yellow-400 text-yellow-400'
-                            : 'text-muted'
-                        }`}
-                      />
-                    ))}
-                  </div>
-                  <span className="text-sm">& Up</span>
+                  {rating === 0 ? (
+                    'Any Rating'
+                  ) : (
+                    <>
+                      <div className="flex">
+                        {Array.from({ length: 5 }).map((_, i) => (
+                          <Star
+                            key={i}
+                            className={`w-4 h-4 ${
+                              i < rating ? 'fill-yellow-400 text-yellow-400' : 'text-muted'
+                            }`}
+                          />
+                        ))}
+                      </div>
+                      <span>& Up</span>
+                    </>
+                  )}
                 </button>
               ))}
             </div>
           </AccordionContent>
         </AccordionItem>
       </Accordion>
+
+      <Button variant="outline" className="w-full" onClick={onClear}>
+        Clear Filters
+      </Button>
     </div>
   )
 }
 
 export function ShopPage() {
-  const { material } = useParams()
+  const { category: urlCategory } = useParams()
   const [searchParams, setSearchParams] = useSearchParams()
+  
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid')
-  const [isLoading, setIsLoading] = useState(true)
-  const [products, setProducts] = useState<Product[]>([])
-  const [page, setPage] = useState(1)
-  const [hasMore, setHasMore] = useState(true)
-
-  // Filters
-  const [selectedMaterials, setSelectedMaterials] = useState<string[]>(
-    material ? [material] : []
-  )
-  const [selectedColors, setSelectedColors] = useState<string[]>([])
-  const [priceRange, setPriceRange] = useState<[number, number]>([0, 500])
+  const [sortBy, setSortBy] = useState(searchParams.get('sort') || 'newest')
+  const [searchQuery, setSearchQuery] = useState(searchParams.get('q') || '')
+  const [selectedMaterials, setSelectedMaterials] = useState<string[]>([])
+  const [selectedCategory, setSelectedCategory] = useState(urlCategory || '')
+  const [priceRange, setPriceRange] = useState([0, 500])
   const [minRating, setMinRating] = useState(0)
-  const [sortBy, setSortBy] = useState('newest')
+  const [page, setPage] = useState(0)
+  const limit = 12
 
-  const activeFiltersCount =
-    selectedMaterials.length +
-    selectedColors.length +
-    (priceRange[0] > 0 || priceRange[1] < 500 ? 1 : 0) +
-    (minRating > 0 ? 1 : 0)
+  // Fetch products from Supabase
+  const { data: products = [], isLoading, error } = useProducts({
+    category: selectedCategory || undefined,
+    material: selectedMaterials[0] || undefined,
+    search: searchQuery || undefined,
+    minPrice: priceRange[0] > 0 ? priceRange[0] : undefined,
+    maxPrice: priceRange[1] < 500 ? priceRange[1] : undefined,
+    minRating: minRating > 0 ? minRating : undefined,
+    sortBy: sortBy as 'price_asc' | 'price_desc' | 'newest' | 'rating' | 'name',
+    limit,
+    offset: page * limit,
+  })
 
-  // Simulate loading products
+  // Update URL params when filters change
   useEffect(() => {
-    setIsLoading(true)
-    const timer = setTimeout(() => {
-      setProducts(mockProducts.slice(0, 12))
-      setIsLoading(false)
-    }, 1000)
-    return () => clearTimeout(timer)
-  }, [selectedMaterials, selectedColors, priceRange, minRating, sortBy])
+    const params = new URLSearchParams()
+    if (sortBy !== 'newest') params.set('sort', sortBy)
+    if (searchQuery) params.set('q', searchQuery)
+    setSearchParams(params, { replace: true })
+  }, [sortBy, searchQuery, setSearchParams])
 
-  const loadMore = () => {
-    setPage((p) => p + 1)
-    // Simulate loading more
-    setTimeout(() => {
-      const newProducts = mockProducts.slice(products.length, products.length + 12)
-      setProducts([...products, ...newProducts])
-      if (products.length + newProducts.length >= mockProducts.length) {
-        setHasMore(false)
-      }
-    }, 500)
-  }
+  // Update category from URL
+  useEffect(() => {
+    if (urlCategory) {
+      setSelectedCategory(urlCategory)
+    }
+  }, [urlCategory])
 
   const clearFilters = () => {
     setSelectedMaterials([])
-    setSelectedColors([])
+    setSelectedCategory('')
     setPriceRange([0, 500])
     setMinRating(0)
+    setSearchQuery('')
+    setPage(0)
   }
 
-  const pageTitle = material
-    ? `${capitalizeFirst(material.replace('-', ' '))} Products`
-    : 'Shop All Products'
+  const activeFiltersCount =
+    selectedMaterials.length +
+    (selectedCategory ? 1 : 0) +
+    (priceRange[0] > 0 || priceRange[1] < 500 ? 1 : 0) +
+    (minRating > 0 ? 1 : 0)
 
   return (
     <>
       <Helmet>
-        <title>{pageTitle} | PrintForge</title>
+        <title>
+          {selectedCategory
+            ? `${capitalizeFirst(selectedCategory)} Products | Nova3D Lab`
+            : 'Shop All Products | Nova3D Lab'}
+        </title>
         <meta
           name="description"
-          content={`Browse our collection of premium 3D printed ${
-            material || 'products'
-          }. High-quality prints with fast delivery.`}
+          content="Browse our collection of premium 3D printed products. From functional parts to art pieces, find the perfect item for your needs."
         />
       </Helmet>
 
@@ -441,111 +406,107 @@ export function ShopPage() {
               animate={{ opacity: 1, y: 0 }}
             >
               <h1 className="font-display text-3xl md:text-4xl font-bold mb-2">
-                {pageTitle}
+                {selectedCategory
+                  ? capitalizeFirst(selectedCategory)
+                  : 'All Products'}
               </h1>
               <p className="text-muted-foreground">
-                Discover high-quality 3D printed products crafted with precision
+                Discover our collection of premium 3D printed products
               </p>
             </motion.div>
           </div>
         </div>
 
         <div className="container mx-auto px-4 py-8">
-          <div className="flex gap-8">
-            {/* Desktop Sidebar */}
+          <div className="flex flex-col lg:flex-row gap-8">
+            {/* Desktop Filters */}
             <aside className="hidden lg:block w-64 flex-shrink-0">
               <div className="sticky top-24">
-                <div className="flex items-center justify-between mb-4">
-                  <h2 className="font-semibold text-lg flex items-center gap-2">
-                    <SlidersHorizontal className="w-5 h-5" />
-                    Filters
-                  </h2>
+                <h2 className="font-semibold text-lg mb-4 flex items-center gap-2">
+                  <Filter className="w-5 h-5" />
+                  Filters
                   {activeFiltersCount > 0 && (
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={clearFilters}
-                      className="text-muted-foreground"
-                    >
-                      Clear all
-                    </Button>
+                    <Badge>{activeFiltersCount}</Badge>
                   )}
-                </div>
-                <FilterSidebar
+                </h2>
+                <FilterPanel
                   selectedMaterials={selectedMaterials}
                   setSelectedMaterials={setSelectedMaterials}
-                  selectedColors={selectedColors}
-                  setSelectedColors={setSelectedColors}
+                  selectedCategory={selectedCategory}
+                  setSelectedCategory={setSelectedCategory}
                   priceRange={priceRange}
                   setPriceRange={setPriceRange}
                   minRating={minRating}
                   setMinRating={setMinRating}
+                  onClear={clearFilters}
                 />
               </div>
             </aside>
 
             {/* Main Content */}
-            <main className="flex-1">
+            <div className="flex-1">
               {/* Toolbar */}
               <div className="flex flex-wrap items-center justify-between gap-4 mb-6">
-                <div className="flex items-center gap-4">
+                {/* Search */}
+                <div className="relative flex-1 min-w-[200px] max-w-md">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                  <Input
+                    type="search"
+                    placeholder="Search products..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="pl-9"
+                  />
+                </div>
+
+                <div className="flex items-center gap-2">
                   {/* Mobile Filter Button */}
                   <Sheet>
                     <SheetTrigger asChild>
                       <Button variant="outline" className="lg:hidden">
-                        <Filter className="w-4 h-4 mr-2" />
+                        <SlidersHorizontal className="w-4 h-4 mr-2" />
                         Filters
                         {activeFiltersCount > 0 && (
-                          <Badge variant="default" className="ml-2">
-                            {activeFiltersCount}
-                          </Badge>
+                          <Badge className="ml-2">{activeFiltersCount}</Badge>
                         )}
                       </Button>
                     </SheetTrigger>
-                    <SheetContent side="left" className="w-80">
+                    <SheetContent side="left">
                       <SheetHeader>
-                        <SheetTitle className="flex items-center gap-2">
-                          <SlidersHorizontal className="w-5 h-5" />
-                          Filters
-                        </SheetTitle>
+                        <SheetTitle>Filters</SheetTitle>
                       </SheetHeader>
                       <div className="mt-6">
-                        <FilterSidebar
+                        <FilterPanel
                           selectedMaterials={selectedMaterials}
                           setSelectedMaterials={setSelectedMaterials}
-                          selectedColors={selectedColors}
-                          setSelectedColors={setSelectedColors}
+                          selectedCategory={selectedCategory}
+                          setSelectedCategory={setSelectedCategory}
                           priceRange={priceRange}
                           setPriceRange={setPriceRange}
                           minRating={minRating}
                           setMinRating={setMinRating}
+                          onClear={clearFilters}
                         />
                       </div>
                     </SheetContent>
                   </Sheet>
 
-                  <p className="text-sm text-muted-foreground">
-                    Showing {products.length} of {mockProducts.length} products
-                  </p>
-                </div>
-
-                <div className="flex items-center gap-4">
                   {/* Sort */}
                   <Select value={sortBy} onValueChange={setSortBy}>
-                    <SelectTrigger className="w-44">
+                    <SelectTrigger className="w-[180px]">
                       <SelectValue placeholder="Sort by" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="newest">Newest</SelectItem>
-                      <SelectItem value="price-low">Price: Low to High</SelectItem>
-                      <SelectItem value="price-high">Price: High to Low</SelectItem>
-                      <SelectItem value="rating">Highest Rated</SelectItem>
-                      <SelectItem value="popular">Most Popular</SelectItem>
+                      {sortOptions.map((opt) => (
+                        <SelectItem key={opt.value} value={opt.value}>
+                          {opt.label}
+                        </SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
 
-                  {/* View Mode */}
-                  <div className="hidden sm:flex items-center border rounded-lg">
+                  {/* View Toggle */}
+                  <div className="hidden sm:flex border rounded-lg">
                     <Button
                       variant={viewMode === 'grid' ? 'secondary' : 'ghost'}
                       size="icon"
@@ -565,97 +526,87 @@ export function ShopPage() {
               </div>
 
               {/* Active Filters */}
-              <AnimatePresence>
-                {activeFiltersCount > 0 && (
-                  <motion.div
-                    initial={{ opacity: 0, height: 0 }}
-                    animate={{ opacity: 1, height: 'auto' }}
-                    exit={{ opacity: 0, height: 0 }}
-                    className="flex flex-wrap gap-2 mb-6"
-                  >
-                    {selectedMaterials.map((id) => {
-                      const material = materials.find((m) => m.id === id)
-                      return (
-                        <Badge
-                          key={id}
-                          variant="secondary"
-                          className="cursor-pointer"
-                          onClick={() =>
-                            setSelectedMaterials(
-                              selectedMaterials.filter((m) => m !== id)
-                            )
-                          }
-                        >
-                          {material?.name}
-                          <X className="w-3 h-3 ml-1" />
-                        </Badge>
-                      )
-                    })}
-                    {selectedColors.map((color) => (
-                      <Badge
-                        key={color}
-                        variant="secondary"
-                        className="cursor-pointer"
+              {activeFiltersCount > 0 && (
+                <div className="flex flex-wrap gap-2 mb-6">
+                  {selectedCategory && (
+                    <Badge variant="secondary" className="gap-1">
+                      {capitalizeFirst(selectedCategory)}
+                      <button onClick={() => setSelectedCategory('')}>
+                        <X className="w-3 h-3" />
+                      </button>
+                    </Badge>
+                  )}
+                  {selectedMaterials.map((mat) => (
+                    <Badge key={mat} variant="secondary" className="gap-1">
+                      {mat}
+                      <button
                         onClick={() =>
-                          setSelectedColors(selectedColors.filter((c) => c !== color))
+                          setSelectedMaterials(selectedMaterials.filter((m) => m !== mat))
                         }
                       >
-                        {color}
-                        <X className="w-3 h-3 ml-1" />
-                      </Badge>
-                    ))}
-                    {(priceRange[0] > 0 || priceRange[1] < 500) && (
-                      <Badge
-                        variant="secondary"
-                        className="cursor-pointer"
-                        onClick={() => setPriceRange([0, 500])}
-                      >
-                        {formatPrice(priceRange[0])} - {formatPrice(priceRange[1])}
-                        <X className="w-3 h-3 ml-1" />
-                      </Badge>
-                    )}
-                    {minRating > 0 && (
-                      <Badge
-                        variant="secondary"
-                        className="cursor-pointer"
-                        onClick={() => setMinRating(0)}
-                      >
-                        {minRating}+ Stars
-                        <X className="w-3 h-3 ml-1" />
-                      </Badge>
-                    )}
-                  </motion.div>
-                )}
-              </AnimatePresence>
+                        <X className="w-3 h-3" />
+                      </button>
+                    </Badge>
+                  ))}
+                  {(priceRange[0] > 0 || priceRange[1] < 500) && (
+                    <Badge variant="secondary" className="gap-1">
+                      ${priceRange[0]} - ${priceRange[1]}
+                      <button onClick={() => setPriceRange([0, 500])}>
+                        <X className="w-3 h-3" />
+                      </button>
+                    </Badge>
+                  )}
+                  {minRating > 0 && (
+                    <Badge variant="secondary" className="gap-1">
+                      {minRating}+ Stars
+                      <button onClick={() => setMinRating(0)}>
+                        <X className="w-3 h-3" />
+                      </button>
+                    </Badge>
+                  )}
+                  <Button variant="ghost" size="sm" onClick={clearFilters}>
+                    Clear All
+                  </Button>
+                </div>
+              )}
 
               {/* Products Grid */}
               {isLoading ? (
                 <div
                   className={`grid gap-6 ${
                     viewMode === 'grid'
-                      ? 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3'
+                      ? 'grid-cols-2 md:grid-cols-3 xl:grid-cols-4'
                       : 'grid-cols-1'
                   }`}
                 >
-                  {Array.from({ length: 6 }).map((_, i) => (
+                  {Array.from({ length: 8 }).map((_, i) => (
                     <ProductSkeleton key={i} />
                   ))}
                 </div>
-              ) : products.length === 0 ? (
-                <div className="text-center py-16">
+              ) : error ? (
+                <Card className="p-8 text-center">
                   <p className="text-muted-foreground mb-4">
-                    No products found matching your filters.
+                    Failed to load products. Please try again.
+                  </p>
+                  <Button onClick={() => window.location.reload()}>Retry</Button>
+                </Card>
+              ) : products.length === 0 ? (
+                <Card className="p-8 text-center">
+                  <p className="text-muted-foreground mb-4">
+                    No products found matching your criteria.
                   </p>
                   <Button variant="outline" onClick={clearFilters}>
                     Clear Filters
                   </Button>
-                </div>
+                </Card>
               ) : (
                 <>
-                  <div
+                  <motion.div
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
                     className={`grid gap-6 ${
                       viewMode === 'grid'
-                        ? 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3'
+                        ? 'grid-cols-2 md:grid-cols-3 xl:grid-cols-4'
                         : 'grid-cols-1'
                     }`}
                   >
@@ -669,20 +620,22 @@ export function ShopPage() {
                         <ProductCard product={product} />
                       </motion.div>
                     ))}
-                  </div>
+                  </motion.div>
 
                   {/* Load More */}
-                  {hasMore && (
-                    <div className="text-center mt-12">
-                      <Button variant="outline" size="lg" onClick={loadMore}>
-                        Load More Products
-                        <ChevronDown className="w-4 h-4 ml-2" />
+                  {products.length >= limit && (
+                    <div className="mt-8 text-center">
+                      <Button
+                        variant="outline"
+                        onClick={() => setPage(page + 1)}
+                      >
+                        Load More
                       </Button>
                     </div>
                   )}
                 </>
               )}
-            </main>
+            </div>
           </div>
         </div>
       </div>
