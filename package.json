@@ -9,6 +9,9 @@
     "lint": "eslint .",
     "preview": "vite preview"
   },
+  "overrides": {
+    "three": "^0.181.2"
+  },
   "dependencies": {
     "@google/model-viewer": "^4.1.0",
     "@hookform/resolvers": "^5.2.2",
