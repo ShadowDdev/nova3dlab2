@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { Helmet } from 'react-helmet-async'
 import { motion } from 'framer-motion'
-import { useForm } from 'react-hook-form'
+import { useForm, Controller } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import {
@@ -65,6 +65,7 @@ export function RegisterPage() {
     register,
     handleSubmit,
     watch,
+    control,
     formState: { errors },
   } = useForm<RegisterForm>({
     resolver: zodResolver(registerSchema),
@@ -276,7 +277,18 @@ export function RegisterPage() {
                 </div>
 
                 <div className="flex items-start space-x-2">
-                  <Checkbox id="terms" {...register('acceptTerms')} className="mt-1" />
+                  <Controller
+                    name="acceptTerms"
+                    control={control}
+                    render={({ field }) => (
+                      <Checkbox
+                        id="terms"
+                        checked={field.value}
+                        onCheckedChange={field.onChange}
+                        className="mt-1"
+                      />
+                    )}
+                  />
                   <label
                     htmlFor="terms"
                     className="text-sm text-muted-foreground cursor-pointer leading-relaxed"

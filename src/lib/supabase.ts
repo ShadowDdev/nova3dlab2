@@ -24,6 +24,7 @@ export const signUp = async (email: string, password: string, fullName: string) 
       data: {
         full_name: fullName,
       },
+      emailRedirectTo: `${window.location.origin}/auth/callback`,
     },
   })
   return { data, error }
@@ -63,6 +64,24 @@ export const signInWithGithub = async () => {
     options: {
       redirectTo: `${window.location.origin}/auth/callback`,
     },
+  })
+  return { data, error }
+}
+
+// Phone auth - send OTP
+export const signInWithPhone = async (phone: string) => {
+  const { data, error } = await supabase.auth.signInWithOtp({
+    phone,
+  })
+  return { data, error }
+}
+
+// Phone auth - verify OTP
+export const verifyPhoneOtp = async (phone: string, token: string) => {
+  const { data, error } = await supabase.auth.verifyOtp({
+    phone,
+    token,
+    type: 'sms',
   })
   return { data, error }
 }

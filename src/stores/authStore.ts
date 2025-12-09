@@ -10,6 +10,8 @@ import {
   signInWithGoogle as supabaseSignInWithGoogle, 
   signInWithGithub as supabaseSignInWithGithub, 
   signInWithMagicLink as supabaseSignInWithMagicLink,
+  signInWithPhone as supabaseSignInWithPhone,
+  verifyPhoneOtp as supabaseVerifyPhoneOtp,
   getProfile 
 } from '@/lib/supabase'
 
@@ -33,6 +35,8 @@ interface AuthState {
   signInWithMagicLink: (email: string) => Promise<void>
   signInWithGoogle: () => Promise<void>
   signInWithGithub: () => Promise<void>
+  signInWithPhone: (phone: string) => Promise<void>
+  verifyPhoneOtp: (phone: string, token: string) => Promise<void>
   signOut: () => Promise<void>
   logout: () => Promise<void>
   
@@ -104,6 +108,32 @@ export const useAuthStore = create<AuthState>()(
         const { error } = await supabaseSignInWithGithub()
         if (error) throw error
         // Redirect handled by Supabase
+      },
+
+      signInWithPhone: async (phone) => {
+        const { error } = await supabaseSignInWithPhone(phone)
+        if (error) throw error
+        // OTP sent to phone, user needs to verify
+      },
+
+      verifyPhoneOtp: async (phone, token) => {
+        set({ isLoading: true })
+        try {
+          const { data, error } = await supabaseVerifyPhoneOtp(phone, token)
+          if (error) throw error
+          
+          if (data.user) {
+            set({ 
+              user: data.user, 
+              session: data.session,
+              isAuthenticated: true,
+              isLoggedIn: true 
+            })
+            await get().fetchProfile(data.user.id)
+          }
+        } finally {
+          set({ isLoading: false })
+        }
       },
 
       signOut: async () => {
