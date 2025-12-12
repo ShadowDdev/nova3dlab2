@@ -133,10 +133,10 @@ export function ContactPage() {
   return (
     <>
       <Helmet>
-        <title>Contact Us | Nova3D Lab</title>
+        <title>Contact Us | Nova 3D Lab</title>
         <meta
           name="description"
-          content="Get in touch with Nova3D Lab. We're here to help with your 3D printing questions, custom orders, and support needs."
+          content="Get in touch with Nova 3D Lab. We're here to help with your 3D printing questions, custom orders, and support needs."
         />
       </Helmet>
 

@@ -324,7 +324,7 @@ export function ProductPage() {
   return (
     <>
       <Helmet>
-        <title>{product.name} | Nova3D Lab</title>
+        <title>{product.name} | Nova 3D Lab</title>
         <meta name="description" content={product.short_description} />
         <meta property="og:title" content={product.name} />
         <meta property="og:description" content={product.short_description} />
@@ -404,7 +404,7 @@ export function ProductPage() {
 
                 {/* Badges */}
                 {discount && (
-                  <Badge variant="destructive" className="absolute top-4 left-4">
+                  <Badge variant="destructive" className="absolute top-4 left-4 z-10 text-sm px-3 py-1">
                     -{discount}%
                   </Badge>
                 )}

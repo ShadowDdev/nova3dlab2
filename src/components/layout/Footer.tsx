@@ -75,7 +75,7 @@ export function Footer() {
               viewport={{ once: true }}
             >
               <h3 className="font-display text-2xl md:text-3xl font-bold mb-4">
-                Join the <span className="text-gradient">PrintForge</span> Community
+                Join the <span className="text-gradient">Nova 3D Lab</span> Community
               </h3>
               <p className="text-muted-foreground mb-6 max-w-xl mx-auto">
                 Get exclusive offers, early access to new materials, and expert tips
@@ -111,8 +111,8 @@ export function Footer() {
                 <Boxes className="w-6 h-6 text-white" />
               </div>
               <span className="font-display font-bold text-xl">
-                <span className="text-gradient">Print</span>
-                <span className="text-foreground">Forge</span>
+                <span className="text-gradient">Nova 3D</span>
+                <span className="text-foreground"> Lab</span>
               </span>
             </Link>
             <p className="text-muted-foreground text-sm mb-6 max-w-xs">
@@ -121,22 +121,22 @@ export function Footer() {
             </p>
             <div className="space-y-2 text-sm">
               <a
-                href="mailto:hello@printforge.com"
+                href="mailto:support@nova3dlab.com"
                 className="flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors"
               >
                 <Mail className="w-4 h-4" />
-                hello@printforge.com
+                support@nova3dlab.com
               </a>
               <a
-                href="tel:+1234567890"
+                href="tel:+911234567890"
                 className="flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors"
               >
                 <Phone className="w-4 h-4" />
-                +1 (234) 567-890
+                +91 12345 67890
               </a>
               <p className="flex items-center gap-2 text-muted-foreground">
                 <MapPin className="w-4 h-4" />
-                San Francisco, CA
+                Chandigarh, India
               </p>
             </div>
           </div>
@@ -213,7 +213,7 @@ export function Footer() {
         <div className="container mx-auto px-4 py-6">
           <div className="flex flex-col md:flex-row items-center justify-between gap-4">
             <div className="flex flex-col md:flex-row items-center gap-4 text-sm text-muted-foreground">
-              <p>&copy; {new Date().getFullYear()} PrintForge. All rights reserved.</p>
+              <p>&copy; {new Date().getFullYear()} Nova 3D Lab. All rights reserved.</p>
               <div className="flex items-center gap-4">
                 <Link to="/privacy" className="hover:text-foreground transition-colors">
                   Privacy Policy

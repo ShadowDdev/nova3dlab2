@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { Helmet } from 'react-helmet-async'
 import { motion } from 'framer-motion'
@@ -22,6 +22,9 @@ import {
   Download,
   RefreshCw,
   Loader2,
+  AlertCircle,
+  PackageOpen,
+  FileX,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -46,13 +49,15 @@ import { Progress } from '@/components/ui/progress'
 import { Skeleton } from '@/components/ui/skeleton'
 import { formatPrice, formatDate } from '@/lib/utils'
 import { useAdminStats, useAdminOrders, useAdminProducts, useAdminMaterialStats } from '@/hooks'
+import { useQueryClient } from '@tanstack/react-query'
+import { toast } from 'sonner'
 import type { Order, Product } from '@/types'
 
 // Mock data
 const stats = [
   {
     title: 'Total Revenue',
-    value: '$48,234.89',
+    value: '₹48,23,489',
     change: '+12.5%',
     trend: 'up' as const,
     icon: DollarSign,
@@ -80,88 +85,7 @@ const stats = [
   },
 ]
 
-const recentOrders: (Order & { customer: string })[] = [
-  {
-    id: '1',
-    order_number: 'PF-2024-001289',
-    user_id: '1',
-    customer: 'John Smith',
-    status: 'processing',
-    payment_status: 'paid',
-    subtotal: 89.99,
-    shipping_cost: 0,
-    tax: 9.0,
-    discount: 0,
-    total: 98.99,
-    shipping_address: { street: '', city: '', state: '', postal_code: '', country: '' },
-    created_at: '2024-01-20T14:30:00Z',
-    updated_at: '2024-01-20T14:30:00Z',
-  },
-  {
-    id: '2',
-    order_number: 'PF-2024-001288',
-    user_id: '2',
-    customer: 'Sarah Johnson',
-    status: 'shipped',
-    payment_status: 'paid',
-    subtotal: 234.5,
-    shipping_cost: 9.99,
-    tax: 23.45,
-    discount: 20,
-    total: 247.94,
-    shipping_address: { street: '', city: '', state: '', postal_code: '', country: '' },
-    created_at: '2024-01-20T12:15:00Z',
-    updated_at: '2024-01-20T15:00:00Z',
-  },
-  {
-    id: '3',
-    order_number: 'PF-2024-001287',
-    user_id: '3',
-    customer: 'Mike Wilson',
-    status: 'pending',
-    payment_status: 'pending',
-    subtotal: 45.99,
-    shipping_cost: 9.99,
-    tax: 4.6,
-    discount: 0,
-    total: 60.58,
-    shipping_address: { street: '', city: '', state: '', postal_code: '', country: '' },
-    created_at: '2024-01-20T10:00:00Z',
-    updated_at: '2024-01-20T10:00:00Z',
-  },
-  {
-    id: '4',
-    order_number: 'PF-2024-001286',
-    user_id: '4',
-    customer: 'Emily Brown',
-    status: 'delivered',
-    payment_status: 'paid',
-    subtotal: 189.0,
-    shipping_cost: 0,
-    tax: 18.9,
-    discount: 0,
-    total: 207.9,
-    shipping_address: { street: '', city: '', state: '', postal_code: '', country: '' },
-    created_at: '2024-01-19T16:45:00Z',
-    updated_at: '2024-01-20T09:30:00Z',
-  },
-  {
-    id: '5',
-    order_number: 'PF-2024-001285',
-    user_id: '5',
-    customer: 'Alex Turner',
-    status: 'cancelled',
-    payment_status: 'refunded',
-    subtotal: 67.5,
-    shipping_cost: 9.99,
-    tax: 6.75,
-    discount: 0,
-    total: 84.24,
-    shipping_address: { street: '', city: '', state: '', postal_code: '', country: '' },
-    created_at: '2024-01-19T14:20:00Z',
-    updated_at: '2024-01-20T11:00:00Z',
-  },
-]
+// Note: recentOrders removed - now using real Supabase data
 
 const mockProducts: Partial<Product>[] = [
   {
@@ -251,51 +175,91 @@ export function AdminPage() {
   const [productSearch, setProductSearch] = useState('')
   const [orderSearch, setOrderSearch] = useState('')
   const [orderFilter, setOrderFilter] = useState('all')
+  const queryClient = useQueryClient()
+  
+  // Note: Admin access is controlled by RLS policies in Supabase
+  // If user is not admin, queries will return empty arrays
 
-  // Fetch data from Supabase
-  const { data: adminStats, isLoading: statsLoading } = useAdminStats()
-  const { data: supabaseOrders, isLoading: ordersLoading } = useAdminOrders({ 
+  // Fetch data from Supabase with error handling
+  const { 
+    data: adminStats, 
+    isLoading: statsLoading, 
+    error: statsError,
+    refetch: refetchStats 
+  } = useAdminStats()
+  
+  const { 
+    data: supabaseOrders, 
+    isLoading: ordersLoading,
+    error: ordersError,
+    refetch: refetchOrders
+  } = useAdminOrders({ 
     status: orderFilter === 'all' ? undefined : orderFilter, 
     search: orderSearch,
     limit: 10 
   })
-  const { data: supabaseProducts, isLoading: productsLoading } = useAdminProducts({ 
+  
+  const { 
+    data: supabaseProducts, 
+    isLoading: productsLoading,
+    error: productsError,
+    refetch: refetchProducts
+  } = useAdminProducts({ 
     search: productSearch,
     limit: 10 
   })
-  const { data: materialStats } = useAdminMaterialStats()
+  const { data: materialStats, isLoading: materialsLoading } = useAdminMaterialStats()
 
-  // Use Supabase data or fallback to mock data
-  const orders = supabaseOrders?.length ? supabaseOrders : recentOrders
-  const products = supabaseProducts?.length ? supabaseProducts : mockProducts
+  // Show error toast on fetch errors
+  useEffect(() => {
+    if (statsError) {
+      toast.error('Failed to load dashboard stats. Please try again.')
+    }
+    if (ordersError) {
+      toast.error('Failed to load orders. Please try again.')
+    }
+    if (productsError) {
+      toast.error('Failed to load products. Please try again.')
+    }
+  }, [statsError, ordersError, productsError])
+
+  // Use Supabase data - don't fall back to mock data for real usage
+  const orders = supabaseOrders || []
+  const products = supabaseProducts || []
   const topMaterials = materialStats?.length ? materialStats : defaultMaterialStats
 
-  // Build stats from Supabase data
+  // Refresh all data
+  const handleRefresh = () => {
+    queryClient.invalidateQueries({ queryKey: ['admin'] })
+    toast.success('Refreshing data...')
+  }
+
+  // Build stats from Supabase data (with proper zero values for empty data)
   const stats = [
     {
       title: 'Total Revenue',
-      value: adminStats ? formatPrice(adminStats.totalRevenue) : '$48,234.89',
+      value: statsLoading ? null : formatPrice(adminStats?.totalRevenue || 0),
       change: '+12.5%',
       trend: 'up' as const,
       icon: DollarSign,
     },
     {
       title: 'Total Orders',
-      value: adminStats ? adminStats.totalOrders.toLocaleString() : '1,234',
+      value: statsLoading ? null : (adminStats?.totalOrders || 0).toLocaleString('en-IN'),
       change: '+8.2%',
       trend: 'up' as const,
       icon: ShoppingCart,
     },
     {
       title: 'Total Products',
-      value: adminStats ? adminStats.totalProducts.toLocaleString() : '156',
+      value: statsLoading ? null : (adminStats?.totalProducts || 0).toLocaleString('en-IN'),
       change: '+4',
       trend: 'up' as const,
       icon: Package,
     },
     {
       title: 'Total Customers',
-      value: adminStats ? adminStats.totalCustomers.toLocaleString() : '2,847',
+      value: statsLoading ? null : (adminStats?.totalCustomers || 0).toLocaleString('en-IN'),
       change: '+23.1%',
       trend: 'up' as const,
       icon: Users,
@@ -307,8 +271,8 @@ export function AdminPage() {
   return (
     <>
       <Helmet>
-        <title>Admin Dashboard | Nova3D Lab</title>
-        <meta name="description" content="Manage your Nova3D Lab store." />
+        <title>Admin Dashboard | Nova 3D Lab</title>
+        <meta name="description" content="Manage your Nova 3D Lab store." />
       </Helmet>
 
       <div className="min-h-screen pt-20">
@@ -330,6 +294,10 @@ export function AdminPage() {
                 </p>
               </div>
               <div className="flex gap-2">
+                <Button variant="outline" onClick={handleRefresh}>
+                  <RefreshCw className="w-4 h-4 mr-2" />
+                  Refresh
+                </Button>
                 <Button variant="outline">
                   <Download className="w-4 h-4 mr-2" />
                   Export
@@ -386,7 +354,11 @@ export function AdminPage() {
                             {stat.change}
                           </Badge>
                         </div>
-                        <h3 className="text-2xl font-bold">{stat.value}</h3>
+                        {stat.value === null ? (
+                          <Skeleton className="h-8 w-24 mb-1" />
+                        ) : (
+                          <h3 className="text-2xl font-bold">{stat.value}</h3>
+                        )}
                         <p className="text-sm text-muted-foreground">{stat.title}</p>
                       </CardContent>
                     </Card>
@@ -425,17 +397,35 @@ export function AdminPage() {
                     <CardDescription>Orders by material type</CardDescription>
                   </CardHeader>
                   <CardContent className="space-y-4">
-                    {topMaterials.map((material) => (
-                      <div key={material.name} className="space-y-2">
-                        <div className="flex justify-between text-sm">
-                          <span className="font-medium">{material.name}</span>
-                          <span className="text-muted-foreground">
-                            {material.orders} orders
-                          </span>
-                        </div>
-                        <Progress value={material.percentage} className="h-2" />
+                    {materialsLoading ? (
+                      <>
+                        {[1, 2, 3, 4].map((i) => (
+                          <div key={i} className="space-y-2">
+                            <div className="flex justify-between">
+                              <Skeleton className="h-4 w-20" />
+                              <Skeleton className="h-4 w-16" />
+                            </div>
+                            <Skeleton className="h-2 w-full" />
+                          </div>
+                        ))}
+                      </>
+                    ) : topMaterials.length === 0 ? (
+                      <div className="py-4 text-center text-muted-foreground">
+                        <p>No material data available</p>
                       </div>
-                    ))}
+                    ) : (
+                      topMaterials.map((material) => (
+                        <div key={material.name} className="space-y-2">
+                          <div className="flex justify-between text-sm">
+                            <span className="font-medium">{material.name}</span>
+                            <span className="text-muted-foreground">
+                              {material.orders} orders
+                            </span>
+                          </div>
+                          <Progress value={material.percentage} className="h-2" />
+                        </div>
+                      ))
+                    )}
                   </CardContent>
                 </Card>
               </div>
@@ -452,40 +442,53 @@ export function AdminPage() {
                   </Button>
                 </CardHeader>
                 <CardContent>
-                  <div className="overflow-x-auto">
-                    <table className="w-full">
-                      <thead>
-                        <tr className="border-b">
-                          <th className="text-left py-3 px-2 font-medium">Order</th>
-                          <th className="text-left py-3 px-2 font-medium">Customer</th>
-                          <th className="text-left py-3 px-2 font-medium">Status</th>
-                          <th className="text-left py-3 px-2 font-medium">Date</th>
-                          <th className="text-right py-3 px-2 font-medium">Total</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {recentOrders.slice(0, 5).map((order) => (
-                          <tr key={order.id} className="border-b last:border-0">
-                            <td className="py-3 px-2">
-                              <span className="font-medium">{order.order_number}</span>
-                            </td>
-                            <td className="py-3 px-2">{order.customer}</td>
-                            <td className="py-3 px-2">
-                              <Badge className={`capitalize ${getStatusColor(order.status)}`}>
-                                {order.status}
-                              </Badge>
-                            </td>
-                            <td className="py-3 px-2 text-muted-foreground">
-                              {formatDate(order.created_at)}
-                            </td>
-                            <td className="py-3 px-2 text-right font-medium">
-                              {formatPrice(order.total)}
-                            </td>
+                  {ordersLoading ? (
+                    <div className="py-8 text-center">
+                      <Loader2 className="w-8 h-8 animate-spin mx-auto text-muted-foreground" />
+                      <p className="text-sm text-muted-foreground mt-2">Loading orders...</p>
+                    </div>
+                  ) : orders.length === 0 ? (
+                    <div className="py-8 text-center">
+                      <ShoppingCart className="w-12 h-12 mx-auto text-muted-foreground mb-2" />
+                      <p className="text-muted-foreground">No orders yet</p>
+                      <p className="text-sm text-muted-foreground">Orders will appear here once customers start purchasing</p>
+                    </div>
+                  ) : (
+                    <div className="overflow-x-auto">
+                      <table className="w-full">
+                        <thead>
+                          <tr className="border-b">
+                            <th className="text-left py-3 px-2 font-medium">Order</th>
+                            <th className="text-left py-3 px-2 font-medium">Customer</th>
+                            <th className="text-left py-3 px-2 font-medium">Status</th>
+                            <th className="text-left py-3 px-2 font-medium">Date</th>
+                            <th className="text-right py-3 px-2 font-medium">Total</th>
                           </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
+                        </thead>
+                        <tbody>
+                          {orders.slice(0, 5).map((order: any) => (
+                            <tr key={order.id} className="border-b last:border-0">
+                              <td className="py-3 px-2">
+                                <span className="font-medium">{order.order_number}</span>
+                              </td>
+                              <td className="py-3 px-2">{order.customer || 'Unknown'}</td>
+                              <td className="py-3 px-2">
+                                <Badge className={`capitalize ${getStatusColor(order.status)}`}>
+                                  {order.status}
+                                </Badge>
+                              </td>
+                              <td className="py-3 px-2 text-muted-foreground">
+                                {formatDate(order.created_at)}
+                              </td>
+                              <td className="py-3 px-2 text-right font-medium">
+                                {formatPrice(order.total)}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
                 </CardContent>
               </Card>
             </TabsContent>
@@ -533,6 +536,14 @@ export function AdminPage() {
                         <Loader2 className="w-8 h-8 animate-spin mx-auto text-muted-foreground" />
                         <p className="text-sm text-muted-foreground mt-2">Loading orders...</p>
                       </div>
+                    ) : orders.length === 0 ? (
+                      <div className="py-12 text-center">
+                        <ShoppingCart className="w-16 h-16 mx-auto text-muted-foreground mb-4" />
+                        <h3 className="font-semibold text-lg mb-2">No orders yet</h3>
+                        <p className="text-muted-foreground max-w-sm mx-auto">
+                          When customers place orders, they will appear here. You can track, manage, and update order statuses.
+                        </p>
+                      </div>
                     ) : (
                     <table className="w-full">
                       <thead>
@@ -552,7 +563,7 @@ export function AdminPage() {
                             <td className="py-3 px-2">
                               <span className="font-medium">{order.order_number}</span>
                             </td>
-                            <td className="py-3 px-2">{order.customer}</td>
+                            <td className="py-3 px-2">{order.customer || 'Unknown'}</td>
                             <td className="py-3 px-2">
                               <Badge className={`capitalize ${getStatusColor(order.status)}`}>
                                 {order.status}
@@ -634,6 +645,18 @@ export function AdminPage() {
                       <div className="py-8 text-center">
                         <Loader2 className="w-8 h-8 animate-spin mx-auto text-muted-foreground" />
                         <p className="text-sm text-muted-foreground mt-2">Loading products...</p>
+                      </div>
+                    ) : products.length === 0 ? (
+                      <div className="py-12 text-center">
+                        <Package className="w-16 h-16 mx-auto text-muted-foreground mb-4" />
+                        <h3 className="font-semibold text-lg mb-2">No products yet</h3>
+                        <p className="text-muted-foreground max-w-sm mx-auto mb-4">
+                          Start building your catalog by adding your first product.
+                        </p>
+                        <Button variant="gradient">
+                          <Plus className="w-4 h-4 mr-2" />
+                          Add Your First Product
+                        </Button>
                       </div>
                     ) : (
                     <table className="w-full">

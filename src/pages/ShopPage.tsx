@@ -388,8 +388,8 @@ export function ShopPage() {
       <Helmet>
         <title>
           {selectedCategory
-            ? `${capitalizeFirst(selectedCategory)} Products | Nova3D Lab`
-            : 'Shop All Products | Nova3D Lab'}
+            ? `${capitalizeFirst(selectedCategory)} Products | Nova 3D Lab`
+            : 'Shop All Products | Nova 3D Lab'}
         </title>
         <meta
           name="description"

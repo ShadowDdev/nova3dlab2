@@ -63,7 +63,7 @@ export function CartPage() {
   return (
     <>
       <Helmet>
-        <title>Shopping Cart | PrintForge</title>
+        <title>Shopping Cart | Nova 3D Lab</title>
         <meta
           name="description"
           content="Review your cart and proceed to checkout. Free shipping on orders over $75."

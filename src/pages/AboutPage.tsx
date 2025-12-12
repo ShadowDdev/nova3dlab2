@@ -114,10 +114,10 @@ export function AboutPage() {
   return (
     <>
       <Helmet>
-        <title>About Us | Nova3D Lab</title>
+        <title>About Us | Nova 3D Lab</title>
         <meta
           name="description"
-          content="Learn about Nova3D Lab's mission to democratize manufacturing through precision 3D printing. Meet our team and discover our commitment to quality and sustainability."
+          content="Learn about Nova 3D Lab's mission to democratize manufacturing through precision 3D printing. Meet our team and discover our commitment to quality and sustainability."
         />
       </Helmet>
 
@@ -188,7 +188,7 @@ export function AboutPage() {
                 </h2>
                 <div className="prose prose-lg dark:prose-invert">
                   <p>
-                    Nova3D Lab was born from a simple frustration: why is professional 3D printing
+                    Nova 3D Lab was born from a simple frustration: why is professional 3D printing
                     so inaccessible? Our founders, Sarah and Marcus, spent years in aerospace
                     and materials science, watching incredible technology remain locked behind
                     industrial gates.
@@ -331,7 +331,7 @@ export function AboutPage() {
                 Meet Our Team
               </h2>
               <p className="text-muted-foreground max-w-2xl mx-auto">
-                The passionate people behind Nova3D Lab who make the magic happen.
+                The passionate people behind Nova 3D Lab who make the magic happen.
               </p>
             </motion.div>
 
@@ -443,7 +443,7 @@ export function AboutPage() {
                 Ready to Bring Your Ideas to Life?
               </h2>
               <p className="text-muted-foreground mb-8">
-                Join thousands of creators who trust Nova3D Lab for their 3D printing needs.
+                Join thousands of creators who trust Nova 3D Lab for their 3D printing needs.
               </p>
               <div className="flex flex-wrap justify-center gap-4">
                 <Button variant="gradient" size="lg" asChild>

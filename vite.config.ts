@@ -11,9 +11,9 @@ export default defineConfig({
       registerType: 'autoUpdate',
       includeAssets: ['favicon.ico', 'apple-touch-icon.png', 'mask-icon.svg'],
       manifest: {
-        name: 'PrintForge - Premium 3D Printing Services',
-        short_name: 'PrintForge',
-        description: 'Premium 3D printing services for engineers, makers, and businesses',
+        name: 'Nova 3D Lab - Premium 3D Printing Services',
+        short_name: 'Nova 3D Lab',
+        description: 'Premium 3D printing services for engineers, makers, and businesses in India',
         theme_color: '#0ea5e9',
         background_color: '#0c0a09',
         icons: [

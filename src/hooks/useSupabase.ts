@@ -406,30 +406,50 @@ export function useAdminStats() {
   return useQuery({
     queryKey: ['admin', 'stats'],
     queryFn: async () => {
+      console.log('[Admin Stats] Fetching dashboard stats...')
+      
       // Get total revenue and orders
       const { data: orders, error: ordersError } = await supabase
         .from('orders')
         .select('total, status, created_at')
       
-      if (ordersError) throw ordersError
+      if (ordersError) {
+        console.error('[Admin Stats] Error fetching orders:', ordersError.message, ordersError.code)
+        // Return empty stats instead of throwing
+        return {
+          totalRevenue: 0,
+          totalOrders: 0,
+          totalProducts: 0,
+          totalCustomers: 0,
+        }
+      }
+      console.log('[Admin Stats] Orders fetched:', orders?.length || 0)
 
       // Get total products
       const { count: productCount, error: productError } = await supabase
         .from('products')
         .select('*', { count: 'exact', head: true })
       
-      if (productError) throw productError
+      if (productError) {
+        console.error('[Admin Stats] Error fetching product count:', productError.message)
+      }
+      console.log('[Admin Stats] Products count:', productCount)
 
       // Get total customers
       const { count: customerCount, error: customerError } = await supabase
         .from('profiles')
         .select('*', { count: 'exact', head: true })
       
-      if (customerError) throw customerError
+      if (customerError) {
+        console.error('[Admin Stats] Error fetching customer count:', customerError.message)
+      }
+      console.log('[Admin Stats] Customers count:', customerCount)
 
       const totalRevenue = orders?.reduce((sum, o) => sum + (parseFloat(o.total) || 0), 0) || 0
       const totalOrders = orders?.length || 0
 
+      console.log('[Admin Stats] Done. Revenue:', totalRevenue, 'Orders:', totalOrders)
+      
       return {
         totalRevenue,
         totalOrders,
@@ -438,6 +458,15 @@ export function useAdminStats() {
       }
     },
     staleTime: 1000 * 60 * 5,
+    retry: 1,
+    retryDelay: 500,
+    refetchOnWindowFocus: false,
+    placeholderData: {
+      totalRevenue: 0,
+      totalOrders: 0,
+      totalProducts: 0,
+      totalCustomers: 0,
+    },
   })
 }
 
@@ -467,13 +496,20 @@ export function useAdminOrders(params: { status?: string; search?: string; limit
 
       const { data, error } = await query
 
-      if (error) throw error
+      if (error) {
+        console.error('Error fetching admin orders:', error)
+        return []
+      }
       return data?.map(order => ({
         ...order,
         customer: order.user?.full_name || order.user?.email || 'Unknown',
       })) || []
     },
     staleTime: 1000 * 60 * 2,
+    retry: 1,
+    retryDelay: 500,
+    refetchOnWindowFocus: false,
+    placeholderData: [],
   })
 }
 
@@ -496,10 +532,17 @@ export function useAdminProducts(params: { search?: string; limit?: number } = {
 
       const { data, error } = await query
 
-      if (error) throw error
+      if (error) {
+        console.error('Error fetching admin products:', error)
+        return []
+      }
       return data || []
     },
     staleTime: 1000 * 60 * 2,
+    retry: 1,
+    retryDelay: 500,
+    refetchOnWindowFocus: false,
+    placeholderData: [],
   })
 }
 
@@ -513,7 +556,10 @@ export function useAdminMaterialStats() {
           material:materials(name)
         `)
 
-      if (error) throw error
+      if (error) {
+        console.error('Error fetching material stats:', error)
+        return []
+      }
 
       // Count by material
       const counts: Record<string, number> = {}
@@ -534,6 +580,10 @@ export function useAdminMaterialStats() {
         .slice(0, 5)
     },
     staleTime: 1000 * 60 * 10,
+    retry: 1,
+    retryDelay: 500,
+    refetchOnWindowFocus: false,
+    placeholderData: [],
   })
 }
 

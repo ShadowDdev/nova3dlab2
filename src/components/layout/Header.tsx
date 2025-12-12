@@ -100,8 +100,8 @@ export function Header() {
               <div className="absolute inset-0 rounded-xl bg-gradient-to-br from-forge-500 to-neon-cyan blur-lg opacity-50 group-hover:opacity-75 transition-opacity" />
             </div>
             <span className="font-display font-bold text-xl hidden sm:block">
-              <span className="text-gradient">Print</span>
-              <span className="text-foreground">Forge</span>
+              <span className="text-gradient">Nova 3D</span>
+              <span className="text-foreground"> Lab</span>
             </span>
           </Link>
 

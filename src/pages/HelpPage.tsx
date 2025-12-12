@@ -143,10 +143,10 @@ export function HelpPage() {
   return (
     <>
       <Helmet>
-        <title>Help Center | Nova3D Lab</title>
+        <title>Help Center | Nova 3D Lab</title>
         <meta
           name="description"
-          content="Find answers to your questions about 3D printing, orders, shipping, materials, and more at Nova3D Lab Help Center."
+          content="Find answers to your questions about 3D printing, orders, shipping, materials, and more at Nova 3D Lab Help Center."
         />
       </Helmet>
 

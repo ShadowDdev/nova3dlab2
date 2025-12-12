@@ -10,7 +10,7 @@ const badges = [
   {
     icon: Truck,
     title: 'Fast Shipping',
-    description: 'Free express shipping over $100',
+    description: 'Free express shipping over ₹5,000',
   },
   {
     icon: Award,

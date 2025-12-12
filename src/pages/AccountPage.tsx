@@ -222,10 +222,10 @@ export function AccountPage() {
   return (
     <>
       <Helmet>
-        <title>My Account | PrintForge</title>
+        <title>My Account | Nova 3D Lab</title>
         <meta
           name="description"
-          content="Manage your PrintForge account, view orders, and update your settings."
+          content="Manage your Nova 3D Lab account, view orders, and update your settings."
         />
       </Helmet>
 

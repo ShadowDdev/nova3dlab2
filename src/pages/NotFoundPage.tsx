@@ -27,7 +27,7 @@ export function NotFoundPage() {
   return (
     <>
       <Helmet>
-        <title>404 - Page Not Found | Nova3D Lab</title>
+        <title>404 - Page Not Found | Nova 3D Lab</title>
         <meta name="description" content="The page you're looking for doesn't exist. Let's help you find what you need." />
       </Helmet>
 

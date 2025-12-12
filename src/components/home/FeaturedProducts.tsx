@@ -60,12 +60,12 @@ function ProductCard({ product }: { product: Product }) {
           />
           
           {/* Badges */}
-          <div className="absolute top-3 left-3 flex flex-col gap-2">
+          <div className="absolute top-3 left-3 flex flex-col gap-2 z-10">
             {discount && (
-              <Badge variant="destructive">-{discount}%</Badge>
+              <Badge variant="destructive" className="text-sm px-3 py-1">-{discount}%</Badge>
             )}
             {product.is_featured && (
-              <Badge variant="glow">Featured</Badge>
+              <Badge variant="glow" className="text-sm px-3 py-1">Featured</Badge>
             )}
           </div>
 

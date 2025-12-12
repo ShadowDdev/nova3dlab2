@@ -7,6 +7,11 @@ if (!supabaseUrl || !supabaseAnonKey) {
   console.warn('Supabase credentials not found. Please set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY in your .env file.')
 }
 
+// Validate anon key format (should be a JWT starting with 'eyJ')
+if (supabaseAnonKey && !supabaseAnonKey.startsWith('eyJ')) {
+  console.error('Invalid Supabase anon key format. The key should be a JWT token starting with "eyJ". Please check your VITE_SUPABASE_ANON_KEY in .env file.')
+}
+
 export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   auth: {
     autoRefreshToken: true,

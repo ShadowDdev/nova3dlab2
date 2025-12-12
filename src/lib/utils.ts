@@ -20,11 +20,17 @@ export function getImageAlt(image: ProductImage | string | undefined, fallback: 
   return image.alt || fallback
 }
 
-export function formatPrice(price: number, currency: string = 'USD'): string {
-  return new Intl.NumberFormat('en-US', {
+export function formatPrice(price: number, currency: string = 'INR'): string {
+  return new Intl.NumberFormat('en-IN', {
     style: 'currency',
     currency,
+    maximumFractionDigits: 0,
   }).format(price)
+}
+
+// Format price in Indian Rupees with proper Indian number formatting
+export function formatPriceInr(amount: number): string {
+  return `₹${amount.toLocaleString('en-IN')}`
 }
 
 export function formatDate(date: string | Date): string {

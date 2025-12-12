@@ -110,7 +110,7 @@ export function MaterialsSection() {
                     <p className="text-sm">
                       From{' '}
                       <span className="font-semibold text-primary">
-                        ${material.priceFrom}/cm³
+                        ₹{material.priceFrom}/cm³
                       </span>
                     </p>
 
