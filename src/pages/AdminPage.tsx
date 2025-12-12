@@ -51,6 +51,7 @@ import { formatPrice, formatDate } from '@/lib/utils'
 import { useAdminStats, useAdminOrders, useAdminProducts, useAdminMaterialStats } from '@/hooks'
 import { useQueryClient } from '@tanstack/react-query'
 import { toast } from 'sonner'
+import { ProductFormModal } from '@/components/admin/ProductFormModal'
 import type { Order, Product } from '@/types'
 
 // Mock data
@@ -175,7 +176,21 @@ export function AdminPage() {
   const [productSearch, setProductSearch] = useState('')
   const [orderSearch, setOrderSearch] = useState('')
   const [orderFilter, setOrderFilter] = useState('all')
+  const [productModalOpen, setProductModalOpen] = useState(false)
+  const [editingProduct, setEditingProduct] = useState<any>(null)
   const queryClient = useQueryClient()
+  
+  // Open modal for new product
+  const handleAddProduct = () => {
+    setEditingProduct(null)
+    setProductModalOpen(true)
+  }
+
+  // Open modal for editing product
+  const handleEditProduct = (product: any) => {
+    setEditingProduct(product)
+    setProductModalOpen(true)
+  }
   
   // Note: Admin access is controlled by RLS policies in Supabase
   // If user is not admin, queries will return empty arrays
@@ -632,7 +647,7 @@ export function AdminPage() {
                           onChange={(e) => setProductSearch(e.target.value)}
                         />
                       </div>
-                      <Button variant="gradient">
+                      <Button variant="gradient" onClick={handleAddProduct}>
                         <Plus className="w-4 h-4 mr-2" />
                         Add Product
                       </Button>
@@ -653,7 +668,7 @@ export function AdminPage() {
                         <p className="text-muted-foreground max-w-sm mx-auto mb-4">
                           Start building your catalog by adding your first product.
                         </p>
-                        <Button variant="gradient">
+                        <Button variant="gradient" onClick={handleAddProduct}>
                           <Plus className="w-4 h-4 mr-2" />
                           Add Your First Product
                         </Button>
@@ -703,7 +718,7 @@ export function AdminPage() {
                                     <Eye className="w-4 h-4 mr-2" />
                                     View
                                   </DropdownMenuItem>
-                                  <DropdownMenuItem>
+                                  <DropdownMenuItem onClick={() => handleEditProduct(product)}>
                                     <Edit className="w-4 h-4 mr-2" />
                                     Edit
                                   </DropdownMenuItem>
@@ -758,6 +773,13 @@ export function AdminPage() {
           </Tabs>
         </div>
       </div>
+
+      {/* Product Form Modal */}
+      <ProductFormModal
+        open={productModalOpen}
+        onOpenChange={setProductModalOpen}
+        product={editingProduct}
+      />
     </>
   )
 }
