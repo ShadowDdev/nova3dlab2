@@ -50,7 +50,7 @@ export const useCartStore = create<CartState>()(
         const newItem: CartItem = {
           id,
           user_id: null,
-          session_id: localStorage.getItem('printforge_session_id'),
+          session_id: localStorage.getItem('nova3dlab_session_id'),
           product_id: input.product?.id || null,
           product: input.product,
           uploaded_model_id: input.uploaded_model?.id || null,
@@ -145,7 +145,7 @@ export const useCartStore = create<CartState>()(
       },
     }),
     {
-      name: 'printforge-cart',
+      name: 'nova3dlab-cart',
       storage: createJSONStorage(() => localStorage),
       partialize: (state) => ({ items: state.items }),
     }

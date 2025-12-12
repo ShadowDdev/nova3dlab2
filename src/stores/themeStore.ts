@@ -51,7 +51,7 @@ export const useThemeStore = create<ThemeState>()(
       },
     }),
     {
-      name: 'printforge-theme',
+      name: 'nova3dlab-theme',
       storage: createJSONStorage(() => localStorage),
       onRehydrateStorage: () => (state) => {
         if (state) {

@@ -168,7 +168,7 @@ export const updateProfile = async (userId: string, updates: Record<string, unkn
 
 // Generate session ID for guests
 export const getOrCreateSessionId = (): string => {
-  const key = 'printforge_session_id'
+  const key = 'nova3dlab_session_id'
   let sessionId = localStorage.getItem(key)
   if (!sessionId) {
     sessionId = crypto.randomUUID()

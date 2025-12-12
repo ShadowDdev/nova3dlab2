@@ -47,7 +47,7 @@ export const useWishlistStore = create<WishlistState>()(
       clearWishlist: () => set({ items: [] }),
     }),
     {
-      name: 'printforge-wishlist',
+      name: 'nova3dlab-wishlist',
       storage: createJSONStorage(() => localStorage),
     }
   )

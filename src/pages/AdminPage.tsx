@@ -317,7 +317,7 @@ export function AdminPage() {
                   <Download className="w-4 h-4 mr-2" />
                   Export
                 </Button>
-                <Button variant="gradient">
+                <Button variant="gradient" onClick={handleAddProduct}>
                   <Plus className="w-4 h-4 mr-2" />
                   Add Product
                 </Button>

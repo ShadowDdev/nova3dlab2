@@ -474,11 +474,12 @@ export function useAdminOrders(params: { status?: string; search?: string; limit
   return useQuery({
     queryKey: ['admin', 'orders', params],
     queryFn: async () => {
+      // First try with email column (after migration)
       let query = supabase
         .from('orders')
         .select(`
           *,
-          user:profiles(full_name, email)
+          user:profiles(id, full_name, email)
         `)
         .order('created_at', { ascending: false })
 
@@ -494,15 +495,44 @@ export function useAdminOrders(params: { status?: string; search?: string; limit
         query = query.limit(params.limit)
       }
 
-      const { data, error } = await query
+      let { data, error } = await query
+
+      // If email column doesn't exist, fallback to query without email
+      if (error?.code === '42703') {
+        console.warn('Email column not found in profiles, using fallback query')
+        let fallbackQuery = supabase
+          .from('orders')
+          .select(`
+            *,
+            user:profiles(id, full_name)
+          `)
+          .order('created_at', { ascending: false })
+
+        if (params.status && params.status !== 'all') {
+          fallbackQuery = fallbackQuery.eq('status', params.status)
+        }
+
+        if (params.search) {
+          fallbackQuery = fallbackQuery.or(`order_number.ilike.%${params.search}%`)
+        }
+
+        if (params.limit) {
+          fallbackQuery = fallbackQuery.limit(params.limit)
+        }
+
+        const fallbackResult = await fallbackQuery
+        data = fallbackResult.data
+        error = fallbackResult.error
+      }
 
       if (error) {
         console.error('Error fetching admin orders:', error)
         return []
       }
+      
       return data?.map(order => ({
         ...order,
-        customer: order.user?.full_name || order.user?.email || 'Unknown',
+        customer: order.user?.full_name || (order.user as any)?.email || 'Unknown Customer',
       })) || []
     },
     staleTime: 1000 * 60 * 2,

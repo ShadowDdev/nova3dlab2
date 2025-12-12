@@ -22,7 +22,7 @@ import {
   AuthCallbackPage,
 } from '@/pages'
 import { useAuthStore, useThemeStore } from '@/stores'
-import { useEffect } from 'react'
+import { useEffect, useRef } from 'react'
 
 // Create query client
 const queryClient = new QueryClient({
@@ -88,12 +88,28 @@ function ThemeSync() {
   return null
 }
 
+// Auth initialization component
+function AuthInit() {
+  const { initialize } = useAuthStore()
+  const initialized = useRef(false)
+
+  useEffect(() => {
+    if (!initialized.current) {
+      initialized.current = true
+      initialize()
+    }
+  }, [initialize])
+
+  return null
+}
+
 function App() {
   return (
     <HelmetProvider>
       <QueryClientProvider client={queryClient}>
         <Router>
           <ThemeSync />
+          <AuthInit />
           <Routes>
             {/* Public routes with layout */}
             <Route element={<RootLayout />}>

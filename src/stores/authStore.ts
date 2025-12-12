@@ -225,7 +225,7 @@ export const useAuthStore = create<AuthState>()(
       },
     }),
     {
-      name: 'printforge-auth',
+      name: 'nova3dlab-auth',
       storage: createJSONStorage(() => localStorage),
       partialize: (state) => ({ 
         user: state.user,

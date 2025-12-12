@@ -10,6 +10,7 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
+  DialogDescription,
   DialogFooter,
 } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
@@ -24,6 +25,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
+import { ErrorBoundary } from '@/components/ui/error-boundary'
 import { supabase } from '@/lib/supabase'
 import { useQueryClient } from '@tanstack/react-query'
 
@@ -186,34 +188,63 @@ export function ProductFormModal({ open, onOpenChange, product }: ProductFormMod
     }
   }
 
-  // Upload file to Supabase Storage
+  // Upload file to Supabase Storage with proper error handling
   async function uploadFile(file: File, bucket: string, folder: string): Promise<string | null> {
-    const ext = file.name.split('.').pop()
-    const fileName = `${folder}/${Date.now()}-${Math.random().toString(36).substring(7)}.${ext}`
-    
-    const { data, error } = await supabase.storage
-      .from(bucket)
-      .upload(fileName, file, { upsert: true })
+    try {
+      // Validate file
+      if (!file || file.size === 0) {
+        console.error('Invalid file provided')
+        return null
+      }
 
-    if (error) {
-      console.error('Upload error:', error)
+      // Create unique filename to avoid collisions
+      const timestamp = Date.now()
+      const randomStr = Math.random().toString(36).substring(2, 10)
+      const sanitizedName = file.name.replace(/[^a-zA-Z0-9.-]/g, '_').substring(0, 50)
+      const fileName = `${folder}/${timestamp}_${randomStr}_${sanitizedName}`
+      
+      console.log(`[Upload] Uploading ${file.name} to ${bucket}/${fileName}`)
+
+      const { data, error } = await supabase.storage
+        .from(bucket)
+        .upload(fileName, file, { 
+          upsert: true,
+          contentType: file.type || 'application/octet-stream'
+        })
+
+      if (error) {
+        console.error('[Upload] Error:', error.message)
+        toast.error(`Failed to upload ${file.name}: ${error.message}`)
+        return null
+      }
+
+      // Get public URL
+      const { data: urlData } = supabase.storage.from(bucket).getPublicUrl(data.path)
+      console.log(`[Upload] Success: ${urlData.publicUrl}`)
+      return urlData.publicUrl
+    } catch (err) {
+      console.error('[Upload] Unexpected error:', err)
       return null
     }
-
-    // Get public URL
-    const { data: urlData } = supabase.storage.from(bucket).getPublicUrl(data.path)
-    return urlData.publicUrl
   }
 
   const onSubmit = async (data: ProductFormData) => {
     setIsSubmitting(true)
 
     try {
-      // Upload new images
+      // Upload new images to product-images bucket
       const uploadedImageUrls: string[] = []
-      for (const file of imageFiles) {
-        const url = await uploadFile(file, 'products', 'images')
-        if (url) uploadedImageUrls.push(url)
+      if (imageFiles.length > 0) {
+        toast.loading('Uploading images...', { id: 'upload-images' })
+        for (const file of imageFiles) {
+          const url = await uploadFile(file, 'product-images', 'images')
+          if (url) uploadedImageUrls.push(url)
+        }
+        toast.dismiss('upload-images')
+        
+        if (uploadedImageUrls.length !== imageFiles.length) {
+          toast.warning(`Only ${uploadedImageUrls.length} of ${imageFiles.length} images uploaded`)
+        }
       }
 
       // Combine existing and new images
@@ -222,7 +253,9 @@ export function ProductFormModal({ open, onOpenChange, product }: ProductFormMod
       // Upload model file if provided
       let modelUrl = existingModelUrl
       if (modelFile) {
-        const uploadedModelUrl = await uploadFile(modelFile, 'products', 'models')
+        toast.loading('Uploading 3D model...', { id: 'upload-model' })
+        const uploadedModelUrl = await uploadFile(modelFile, 'product-images', 'models')
+        toast.dismiss('upload-model')
         if (uploadedModelUrl) modelUrl = uploadedModelUrl
       }
 
@@ -282,8 +315,15 @@ export function ProductFormModal({ open, onOpenChange, product }: ProductFormMod
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+        <ErrorBoundary>
         <DialogHeader>
           <DialogTitle>{isEditing ? 'Edit Product' : 'Add New Product'}</DialogTitle>
+          <DialogDescription>
+            {isEditing 
+              ? 'Update the product details below. Changes will be saved immediately.'
+              : 'Fill in the details below to create a new product in your catalog.'
+            }
+          </DialogDescription>
         </DialogHeader>
 
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
@@ -353,14 +393,14 @@ export function ProductFormModal({ open, onOpenChange, product }: ProductFormMod
             <div className="space-y-2">
               <Label htmlFor="category_id">Category</Label>
               <Select
-                value={watch('category_id') || ''}
-                onValueChange={(value) => setValue('category_id', value)}
+                value={watch('category_id') || 'none'}
+                onValueChange={(value) => setValue('category_id', value === 'none' ? '' : value)}
               >
                 <SelectTrigger>
                   <SelectValue placeholder="Select category" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">No category</SelectItem>
+                  <SelectItem value="none">No category</SelectItem>
                   {categories.map((cat) => (
                     <SelectItem key={cat.id} value={cat.id}>
                       {cat.name}
@@ -501,6 +541,7 @@ export function ProductFormModal({ open, onOpenChange, product }: ProductFormMod
             </Button>
           </DialogFooter>
         </form>
+      </ErrorBoundary>
       </DialogContent>
     </Dialog>
   )
